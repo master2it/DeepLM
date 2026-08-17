@@ -1,4 +1,4 @@
-# DeepLM (FastAPI + Next.js)
+# DeepLM (FastAPI + Next.js) 
 
 Grammar/Spell Fixer and 12 Tenses in the browser. Pick **Ollama**, **Hugging Face**, or **Groq** in Settings. The API tries that provider first, then falls back: Ollama → Hugging Face → Groq.
 
@@ -27,11 +27,13 @@ HF_TOKEN=hf_your_token_here
 GROQ_API_KEY=gsk_your_key_here
 ```
 
+
+
 ## Versioning
 
-App version lives in [`VERSION`](VERSION) and is shown in the UI (`v…`) and on `GET /health`. Each push to `main` runs `.github/workflows/bump-version.yml`, which increments the patch number (for example `1.0.0` → `1.0.1`) and tags `v1.0.1`. Commits that already say `chore: bump version` are skipped so the bot does not loop.
+App version lives in `[VERSION](VERSION)` and is shown in the UI (`v…`) and on `GET /health`. Each push to `main` runs `.github/workflows/bump-version.yml`, which increments the patch number (for example `1.0.0` → `1.0.1`) and tags `v1.0.1`. Commits that already say `chore: bump version` are skipped so the bot does not loop.
 
-Record every AI-assisted fix in [`CHANGELOG.md`](CHANGELOG.md) and tag it **major**, **minor**, **patch** (bugs), or **release**.
+Record every AI-assisted fix in `[CHANGELOG.md](CHANGELOG.md)` and tag it **major**, **minor**, **patch** (bugs), or **release**.
 
 ## Deploy (Railpack)
 
@@ -58,9 +60,11 @@ Local Redis is in `docker-compose.yml`. `railway.toml` `[environments.local.vari
 docker compose up --build
 ```
 
-- App: http://localhost:3000
-- API: http://localhost:8000
-- Health: http://localhost:8000/health
+- App: [http://localhost:3000](http://localhost:3000)
+- API: [http://localhost:8000](http://localhost:8000)
+- Health: [http://localhost:8000/health](http://localhost:8000/health)
+
+
 
 ## Local development (without Docker)
 
@@ -85,6 +89,8 @@ set NEXT_PUBLIC_API_URL=http://localhost:8000
 npm run dev
 ```
 
+
+
 ## Progressive Web App
 
 The frontend is installable (HTTPS production). Production build uses webpack so Serwist can inject the service worker:
@@ -102,6 +108,8 @@ npm run start
 - Offline page: `/offline` (app shell only; API calls stay network-only)
 - In-app **Install app** in the header (Chromium). iOS: Share → Add to Home Screen
 
+
+
 ### Lighthouse / test checklist
 
 - Chrome DevTools → Application → Manifest: name, 192+512 icons, `start_url` `/`, `display` standalone
@@ -111,12 +119,16 @@ npm run start
 - Install: **Install app** + browser install prompt; iOS Add to Home Screen
 - Unchanged: tabs, Groq key, Railway CORS, `NEXT_PUBLIC_API_URL`
 
+
+
 ## Tests
 
 ```bash
 cd backend
 python -m unittest tests.test_config tests.test_translation_quality -v
 ```
+
+
 
 ## Features
 
@@ -125,6 +137,8 @@ python -m unittest tests.test_config tests.test_translation_quality -v
 - **Settings** — choose Ollama / Hugging Face / Groq; paste a Groq API key (saved in the browser)
 - **Changelog** — Versions tab lists releases from `CHANGELOG.md`
 - **PWA** — installable app (manifest, service worker, Install button)
+
+
 
 ## LLM routing
 
