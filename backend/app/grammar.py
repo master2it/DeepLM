@@ -7,13 +7,16 @@ import json
 from app.constants import (
     DEFAULT_GRAMMAR_FROM,
     DEFAULT_GRAMMAR_TO,
+    GERMAN_PERSIAN_RULES,
     SEMANTIC_ACCURACY_RULES,
     STYLE_VARIANTS,
     TARGET_LANGUAGES,
     TEACHER_EDITOR_INSTRUCTION,
+    _GERMAN_READY_FIRST_PERSON_RE,
     _PERSIAN_EXPLICIT_I_RE,
     _PERSIAN_IT_READY_RE,
     _READY_FIRST_PERSON_RE,
+    native_target_label,
 )
 from app.jsonutil import extract_json
 from app.llm import LLMError, chat
@@ -29,6 +32,14 @@ def persian_implies_impersonal_ready(text: str) -> bool:
 
 def english_invents_speaker_ready(text: str) -> bool:
     return bool(text and _READY_FIRST_PERSON_RE.search(text))
+
+
+def german_invents_speaker_ready(text: str) -> bool:
+    return bool(text and _GERMAN_READY_FIRST_PERSON_RE.search(text))
+
+
+def target_invents_speaker_ready(text: str) -> bool:
+    return english_invents_speaker_ready(text) or german_invents_speaker_ready(text)
 
 
 def collect_style_to_texts(data: dict | None) -> list[str]:
@@ -50,7 +61,7 @@ def collect_style_to_texts(data: dict | None) -> list[str]:
 def flagged_invented_ready_subject(source_text: str, result: dict) -> bool:
     if not persian_implies_impersonal_ready(source_text):
         return False
-    return any(english_invents_speaker_ready(t) for t in collect_style_to_texts(result))
+    return any(target_invents_speaker_ready(t) for t in collect_style_to_texts(result))
 
 
 def _style_pair(item) -> dict[str, str]:
@@ -92,14 +103,19 @@ def build_styled_translation_prompt(
     context=None,
     retry_feedback=None,
 ) -> tuple[str, str]:
+    tgt_label = native_target_label(tgt)
+    pair = {src_hint, tgt}
+    german_persian = pair == {"German", "Persian"}
+    pair_rules = f"\n{GERMAN_PERSIAN_RULES}\n" if german_persian else ""
+
     translation_block = (
-        f"The user asks for American English ({tgt}) output at B2 level.\n"
-        f"1) Write canonical_meaning: one accurate neutral American English sentence (B2).\n"
-        f'2) For each style, "from" = corrected/cleaned source-language text in that tone;\n'
-        f'   "to" = the SAME meaning as canonical_meaning, restyled in natural US English '
+        f"The user asks for {tgt_label} output.\n"
+        f"1) Write canonical_meaning: one accurate neutral sentence in {tgt} ({tgt_label}).\n"
+        f'2) For each style, "from" = corrected/cleaned {src_hint} text in that tone;\n'
+        f'   "to" = the SAME meaning as canonical_meaning, restyled in {tgt_label} '
         f"(Friendly/casual, Professional/formal, or Everyday/neutral).\n"
         f"All three \"to\" lines must preserve identical who/what/when facts as canonical_meaning.\n"
-        f"Sound natural as spoken in the US — not stiff or word-for-word."
+        f"Sound natural as spoken by a native — not stiff or word-for-word."
         if wants_translation
         else (
             "No target-language translation was requested. Keep styled rewrites in the source language.\n"
@@ -129,12 +145,12 @@ SEMANTIC ACCURACY (mandatory):
 {SEMANTIC_ACCURACY_RULES}
 
 Pipeline you MUST follow (internally, then output JSON only):
-1. Treat the input as Persian when it is Persian (UI hint may be {src_hint}).
+1. Treat the input as {src_hint} (detect if the UI hint is wrong).
 2. Analyze whether subjects/objects are explicit or implicit.
-3. Decide a single canonical_meaning in natural American English (B2) when translating.
+3. Decide a single canonical_meaning in {tgt_label if wants_translation else src_hint} when translating.
 4. Derive all style variants FROM that canonical meaning (tone only — no meaning drift).
 5. {translation_block}
-
+{pair_rules}
 {context_block}
 {retry_block}
 Also:
@@ -146,17 +162,17 @@ Output ONLY valid JSON (no markdown, no commentary):
 {{
     "detected_lang": "<detected language name>",
     "subject_reading": "<how you read omitted/explicit subjects>",
-    "canonical_meaning": "<one accurate neutral American English reading (B2)>",
+    "canonical_meaning": "<one accurate neutral reading in the target language>",
     "grammar_notes": "<brief notes or empty>",
-    "friendly_casual": {{"from": "<corrected casual source>", "to": "<Friendly/casual US English or empty>"}},
-    "professional_formal": {{"from": "<corrected formal source>", "to": "<Professional/formal US English or empty>"}},
-    "everyday_neutral": {{"from": "<corrected neutral source>", "to": "<Everyday/neutral US English or empty>"}}
+    "friendly_casual": {{"from": "<corrected casual source>", "to": "<Friendly/casual {tgt} or empty>"}},
+    "professional_formal": {{"from": "<corrected formal source>", "to": "<Professional/formal {tgt} or empty>"}},
+    "everyday_neutral": {{"from": "<corrected neutral source>", "to": "<Everyday/neutral {tgt} or empty>"}}
 }}
 """.strip()
 
     if wants_translation:
         user_msg = (
-            "Translate and fix this Persian into natural American English (B2). "
+            f"Translate and fix this {src_hint} into {tgt_label}. "
             f"Then give Friendly/casual, Professional/formal, and Everyday/neutral versions in {tgt}. "
             "Explain grammar briefly in grammar_notes if needed.\n\n"
             "Text:\n{text}"
@@ -222,8 +238,9 @@ def get_styled_translations_from_ai(
             result = _once(
                 retry_feedback=(
                     "You translated impersonal Persian 'آماده میشه/می‌شود' as if the SPEAKER "
-                    "will be ready ('I'll be ready'). That is wrong. Use neutral 'it will be ready' "
-                    "/ 'it'll be ready', and for pickup use 'come pick it up' / 'come by to collect it'."
+                    "will be ready ('I'll be ready' / 'ich bin bereit'). That is wrong. "
+                    "Use neutral 'it will be ready' / 'it'll be ready' / German 'es wird fertig', "
+                    "and for pickup use 'come pick it up' / 'come by to collect it' / 'abholen'."
                 )
             )
         result["provider"] = used_provider

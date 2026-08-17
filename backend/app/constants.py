@@ -7,9 +7,9 @@ import re
 TARGET_LANGUAGES = {
     "Persian": "pes_Arab",
     "English": "eng_Latn",
+    "German": "deu_Latn",
     "Arabic": "arb_Arab",
     "French": "fra_Latn",
-    "German": "deu_Latn",
     "Spanish": "spa_Latn",
     "Turkish": "tur_Latn",
     "Italian": "ita_Latn",
@@ -32,24 +32,41 @@ STYLE_VARIANTS = (
 )
 
 TEACHER_EDITOR_INSTRUCTION = """
-Whenever I send you a text in Persian, act as an American English language teacher and correct its grammar and natural usage.
-
-First, translate and fix the text into natural American English (B2 level).
-Then provide 3 versions of the corrected sentence:
-1. Friendly / casual
-2. Professional / formal
-3. Everyday / neutral conversational
+You are a bilingual language teacher and editor.
+Correct grammar and produce natural native phrasing in the requested languages.
 
 Rules:
-
 - Do not reuse or rely on previous sentences. Each message is independent.
 - Only correct and improve the sentence I send in that turn.
 - If there are grammar mistakes, explain them briefly and fix them naturally.
-- Keep the output clean, native-like, and natural as spoken in the US.
-- Avoid overly complex vocabulary; stay around B2 level unless necessary.
 - Keep the meaning and intent of the original text unchanged.
 - Do not add information that is not present in the original text.
+- Stay around B2 level unless the source is more advanced.
 """.strip()
+
+GERMAN_PERSIAN_RULES = """
+German ↔ Persian (mandatory when either language is German and the other is Persian):
+- Produce natural contemporary phrasing, not word-for-word calques.
+- Formal / professional German uses Sie + verb-second; casual German uses du.
+- Everyday / neutral German uses polite but natural phrasing (often Sie in unknown-audience, du if the source is clearly informal).
+- Persian formal register uses شما / polite verbs; casual uses تو / colloquial verbs.
+- Persian "آماده می‌شه / آماده میشه / آماده می‌شود" without explicit "من" → German "es wird fertig" / "es ist soweit", NOT "ich bin bereit" / "ich werde bereit sein".
+- German "es wird fertig" / "es ist nächste Woche soweit" → Persian "آماده می‌شه / آماده می‌شود", NOT "من آماده می‌شم".
+- German separable verbs, compound nouns, and modal verbs must be rendered idiomatically in Persian (e.g. abholen → آمدن و گرفتن / برداشتن).
+- Persian pickup "می‌تونی بیای بگیری" → German "du kannst es abholen" / "Sie können es abholen", not a stiff literal.
+- Keep tense, time words, and who/what/when identical across all three styles.
+- Do not mix du and Sie inside one style variant.
+""".strip()
+
+def native_target_label(tgt: str) -> str:
+    if tgt == "English":
+        return "natural American English (B2)"
+    if tgt == "German":
+        return "natural German (B2)"
+    if tgt == "Persian":
+        return "natural contemporary Persian"
+    return f"natural {tgt} (B2)"
+
 
 SEMANTIC_ACCURACY_RULES = """
 Preserve the original meaning and context.
@@ -77,6 +94,10 @@ Null-subject / pro-drop languages (especially Persian, Arabic, Turkish, Spanish,
 
 _READY_FIRST_PERSON_RE = re.compile(
     r"\bI(?:'ll| will)\s+be\s+(?:ready|prepared)\b",
+    re.IGNORECASE,
+)
+_GERMAN_READY_FIRST_PERSON_RE = re.compile(
+    r"\bich\s+(?:werde|bin|wäre)\s+(?:bereit|fertig)\b",
     re.IGNORECASE,
 )
 _PERSIAN_IT_READY_RE = re.compile(r"[آا]ماده\s*م[\u200cیي]*ش(?:ه|ود)?")

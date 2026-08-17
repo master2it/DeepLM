@@ -83,12 +83,16 @@ export function GrammarFixer({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <p className="text-sm text-zinc-400">
-        Persian → American English (B2): Friendly / Formal / Neutral styles
+        {fromLang} → {toLang}: Friendly / Formal / Neutral styles
+        {(fromLang === "German" && toLang === "Persian") ||
+        (fromLang === "Persian" && toLang === "German")
+          ? " · German ↔ Persian (du/Sie and تو/شما)"
+          : ""}
       </p>
       <Textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Enter Persian (or other) text…"
+        placeholder={`Enter ${fromLang} text…`}
         dir={rtl.has(fromLang) ? "rtl" : "ltr"}
         className="min-h-[100px]"
       />

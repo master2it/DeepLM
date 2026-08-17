@@ -81,7 +81,7 @@ python -m unittest tests.test_config tests.test_translation_quality -v
 
 ## Features
 
-- **Grammar/Spell Fixer** — default tab; Persian → natural American English (B2); three styles
+- **Grammar/Spell Fixer** — default tab; Persian, German, English, and other pairs; three styles (German ↔ Persian uses du/Sie and تو/شما)
 - **12 Tenses** — conjugate a short English phrase with Persian glosses
 - **Settings** — choose Ollama / Hugging Face / Groq; paste a Groq API key (saved in the browser)
 

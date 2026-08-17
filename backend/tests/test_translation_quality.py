@@ -41,6 +41,11 @@ class HeuristicTests(unittest.TestCase):
             grammar.english_invents_speaker_ready("It'll be ready next week.")
         )
 
+    def test_german_invented_speaker_ready(self):
+        self.assertTrue(grammar.german_invents_speaker_ready("Nächste Woche ich werde bereit sein."))
+        self.assertTrue(grammar.german_invents_speaker_ready("Ich bin fertig morgen."))
+        self.assertFalse(grammar.german_invents_speaker_ready("Es wird nächste Woche fertig."))
+
     def test_flag_bad_ready_subject_on_result(self):
         bad = {
             "canonical_meaning": "Next week I'll be ready.",
@@ -52,6 +57,15 @@ class HeuristicTests(unittest.TestCase):
             "everyday_neutral": {"from": "...", "to": "I'll be ready."},
         }
         self.assertTrue(grammar.flagged_invented_ready_subject(PERSIAN_READY_PICKUP, bad))
+        german_bad = {
+            "canonical_meaning": "Nächste Woche ich bin bereit.",
+            "friendly_casual": {"from": "...", "to": "Ich werde bereit sein."},
+            "professional_formal": {"from": "...", "to": "Es wird fertig."},
+            "everyday_neutral": {"from": "...", "to": "Es wird fertig."},
+        }
+        self.assertTrue(
+            grammar.flagged_invented_ready_subject(PERSIAN_READY_PICKUP, german_bad)
+        )
 
 
 class PromptArchitectureTests(unittest.TestCase):
@@ -65,6 +79,28 @@ class PromptArchitectureTests(unittest.TestCase):
         self.assertIn("Do not invent explicit subjects", system)
         self.assertIn("American English", system)
         self.assertIn("{text}", user)
+
+    def test_german_persian_prompt_both_directions(self):
+        de_fa, user_de = grammar.build_styled_translation_prompt(
+            src_hint="German",
+            tgt="Persian",
+            wants_translation=True,
+        )
+        self.assertIn("German ↔ Persian", de_fa)
+        self.assertIn("natural contemporary Persian", de_fa)
+        self.assertIn("German", user_de)
+        self.assertIn("Persian", user_de)
+
+        fa_de, user_fa = grammar.build_styled_translation_prompt(
+            src_hint="Persian",
+            tgt="German",
+            wants_translation=True,
+        )
+        self.assertIn("German ↔ Persian", fa_de)
+        self.assertIn("natural German", fa_de)
+        self.assertIn("es wird fertig", fa_de)
+        self.assertIn("Persian", user_fa)
+        self.assertIn("German", user_fa)
 
     def test_prompt_accepts_context(self):
         system, _user = grammar.build_styled_translation_prompt(
