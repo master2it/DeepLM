@@ -28,6 +28,13 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+### 2026-08-18 — Hugging Face key and daily default-key limits
+- **Type:** minor
+- **Version:** Unreleased
+- **Summary:** Settings accepts a Hugging Face API key (browser-only). Empty field uses server HF_TOKEN with a 30/day cap per browser id and IP (Redis). Cache hits do not count. Limits tab shows used/remaining. Own HF token is uncapped.
+- **Why:** feature
+- **Files:** `backend/app/quota.py`, `backend/app/llm.py`, `backend/app/main.py`, `frontend/src/components/limits-panel.tsx`, `frontend/src/components/settings-panel.tsx`
+
 ---
 
 ## [1.4.0] — 2026-08-17 — minor

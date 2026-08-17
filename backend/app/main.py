@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -21,8 +21,10 @@ from app.constants import (
     TENSE_LANGUAGES,
 )
 from app.cache import cached_result, redis_reachable
+from app.changelog import load_changelog
 from app.grammar import get_styled_translations_from_ai
 from app.llm import providers_status
+from app.quota import assert_can_generate, consume, snapshot, uses_default_hf
 from app.tenses import get_tense_explanation_from_ai, get_tenses_from_ai
 from app.version import APP_VERSION
 
@@ -48,6 +50,7 @@ class GrammarRequest(BaseModel):
     context: str | None = None
     provider: ProviderField | None = None
     groq_api_key: str | None = None
+    hf_api_key: str | None = None
 
 
 class TensesRequest(BaseModel):
@@ -55,6 +58,7 @@ class TensesRequest(BaseModel):
     language: str = DEFAULT_TENSE_LANGUAGE
     provider: ProviderField | None = None
     groq_api_key: str | None = None
+    hf_api_key: str | None = None
 
 
 class TenseExplainRequest(BaseModel):
@@ -62,6 +66,7 @@ class TenseExplainRequest(BaseModel):
     language: str = DEFAULT_TENSE_LANGUAGE
     provider: ProviderField | None = None
     groq_api_key: str | None = None
+    hf_api_key: str | None = None
 
 
 @app.get("/health")
@@ -78,7 +83,7 @@ def health():
         "hf_model": by_id["huggingface"]["model"],
         "groq_model": by_id["groq"]["model"],
         "providers": providers,
-        "default_provider": "ollama",
+        "hf_default_daily_limit": get_settings().hf_default_daily_limit,
         "redis": redis_reachable(),
     }
 
@@ -110,60 +115,95 @@ def languages():
     }
 
 
+def _run_generation(
+    http_request: Request,
+    provider: str | None,
+    hf_api_key: str | None,
+    *,
+    kind: str | None,
+    parts: dict | None,
+    producer,
+):
+    default = uses_default_hf(provider, hf_api_key)
+    if default:
+        assert_can_generate(http_request)
+    if kind and parts is not None:
+        result = cached_result(kind, parts, producer)
+    else:
+        result = producer()
+    if isinstance(result, dict) and result.get("error"):
+        raise HTTPException(status_code=502, detail=result["error"])
+    if default and not (isinstance(result, dict) and result.get("cached")):
+        consume(http_request)
+    return result
+
+
+@app.get("/api/limits")
+def api_limits(request: Request, own_key: bool = False):
+    return snapshot(request, using_default_key=not own_key)
+
+
 @app.post("/api/grammar")
-def grammar(req: GrammarRequest):
-    result = cached_result(
-        "grammar",
-        {
+def grammar(req: GrammarRequest, request: Request):
+    return _run_generation(
+        request,
+        req.provider,
+        req.hf_api_key,
+        kind="grammar",
+        parts={
             "text": req.text.strip(),
             "from_lang": req.from_lang,
             "to_lang": req.to_lang,
             "context": req.context or "",
             "provider": req.provider or "",
         },
-        lambda: get_styled_translations_from_ai(
+        producer=lambda: get_styled_translations_from_ai(
             req.text.strip(),
             from_lang=req.from_lang,
             to_lang=req.to_lang,
             context=req.context,
             provider=req.provider,
             groq_api_key=req.groq_api_key,
+            hf_api_key=req.hf_api_key,
         ),
     )
-    if isinstance(result, dict) and result.get("error"):
-        raise HTTPException(status_code=502, detail=result["error"])
-    return result
 
 
 @app.post("/api/tenses")
-def tenses(req: TensesRequest):
-    result = cached_result(
-        "tenses",
-        {
+def tenses(req: TensesRequest, request: Request):
+    return _run_generation(
+        request,
+        req.provider,
+        req.hf_api_key,
+        kind="tenses",
+        parts={
             "text": req.text.strip(),
             "language": req.language,
             "provider": req.provider or "",
         },
-        lambda: get_tenses_from_ai(
+        producer=lambda: get_tenses_from_ai(
             req.text.strip(),
             language=req.language,
             provider=req.provider,
             groq_api_key=req.groq_api_key,
+            hf_api_key=req.hf_api_key,
         ),
     )
-    if isinstance(result, dict) and result.get("error"):
-        raise HTTPException(status_code=502, detail=result["error"])
-    return result
 
 
 @app.post("/api/tenses/explain")
-def tenses_explain(req: TenseExplainRequest):
-    result = get_tense_explanation_from_ai(
-        req.tense.strip(),
-        language=req.language,
-        provider=req.provider,
-        groq_api_key=req.groq_api_key,
+def tenses_explain(req: TenseExplainRequest, request: Request):
+    return _run_generation(
+        request,
+        req.provider,
+        req.hf_api_key,
+        kind=None,
+        parts=None,
+        producer=lambda: get_tense_explanation_from_ai(
+            req.tense.strip(),
+            language=req.language,
+            provider=req.provider,
+            groq_api_key=req.groq_api_key,
+            hf_api_key=req.hf_api_key,
+        ),
     )
-    if isinstance(result, dict) and result.get("error"):
-        raise HTTPException(status_code=502, detail=result["error"])
-    return result

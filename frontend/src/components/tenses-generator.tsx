@@ -35,9 +35,11 @@ import {
 export function TensesGenerator({
   provider,
   groqApiKey,
+  hfApiKey,
 }: {
   provider: ProviderId;
   groqApiKey: string;
+  hfApiKey: string;
 }) {
   const [languages, setLanguages] = useState<string[]>(["English", "German"]);
   const [tenseCounts, setTenseCounts] = useState<Record<string, number>>(
@@ -85,7 +87,13 @@ export function TensesGenerator({
     setLoading(true);
     setError(null);
     try {
-      const data = await postTenses(text.trim(), provider, groqApiKey, language);
+      const data = await postTenses(
+        text.trim(),
+        provider,
+        groqApiKey,
+        language,
+        hfApiKey
+      );
       setItems(data.items || []);
       setUsedProvider(data.provider || null);
     } catch (err) {
@@ -102,7 +110,13 @@ export function TensesGenerator({
     setInfoLoading(true);
     setInfoBody("");
     try {
-      const data = await postTenseExplain(tense, provider, groqApiKey, language);
+      const data = await postTenseExplain(
+        tense,
+        provider,
+        groqApiKey,
+        language,
+        hfApiKey
+      );
       const examples = (data.examples || [])
         .map((ex, i) => {
           const de = ex.text || ex.en || "";

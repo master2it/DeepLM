@@ -71,6 +71,7 @@ class Settings(BaseSettings):
         ),
     )
     redis_ttl_seconds: int = 43200
+    hf_default_daily_limit: int = 30
 
     @property
     def cors_origin_list(self) -> list[str]:

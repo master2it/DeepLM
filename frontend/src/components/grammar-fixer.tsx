@@ -31,9 +31,11 @@ const STYLE_KEYS = [
 export function GrammarFixer({
   provider,
   groqApiKey,
+  hfApiKey,
 }: {
   provider: ProviderId;
   groqApiKey: string;
+  hfApiKey: string;
 }) {
   const [meta, setMeta] = useState<LanguagesPayload | null>(null);
   const [text, setText] = useState("");
@@ -70,6 +72,7 @@ export function GrammarFixer({
         to_lang: toLang,
         provider,
         groq_api_key: groqApiKey,
+        hf_api_key: hfApiKey,
       });
       setResult(data);
     } catch (err) {

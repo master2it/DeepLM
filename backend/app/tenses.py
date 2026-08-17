@@ -153,6 +153,7 @@ def get_tenses_from_ai(
     language: str | None = None,
     provider: str | None = None,
     groq_api_key: str | None = None,
+    hf_api_key: str | None = None,
 ) -> dict | list:
     lang = normalize_tense_language(language)
     if lang == "German":
@@ -201,6 +202,7 @@ Exactly 12 objects, in the order listed above.
             max_tokens=2500,
             provider=provider,
             groq_api_key=groq_api_key,
+            hf_api_key=hf_api_key,
         )
         data = json.loads(extract_json(content))
         if isinstance(data, dict) and "error" in data:
@@ -221,6 +223,7 @@ def get_tense_explanation_from_ai(
     language: str | None = None,
     provider: str | None = None,
     groq_api_key: str | None = None,
+    hf_api_key: str | None = None,
 ) -> dict:
     lang = normalize_tense_language(language)
     if lang == "German":
@@ -277,6 +280,7 @@ Output ONLY a valid JSON OBJECT:
             max_tokens=1500,
             provider=provider,
             groq_api_key=groq_api_key,
+            hf_api_key=hf_api_key,
         )
         data = json.loads(extract_json(content))
         if not isinstance(data, dict):

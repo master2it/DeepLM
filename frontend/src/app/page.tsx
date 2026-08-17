@@ -1,19 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BookOpen, History, Settings, SpellCheck } from "lucide-react";
+import { BookOpen, Gauge, History, Settings, SpellCheck } from "lucide-react";
 import { InstallButton } from "@/components/install-button";
 import { ChangelogPanel } from "@/components/changelog-panel";
 import { GrammarFixer } from "@/components/grammar-fixer";
+import { LimitsPanel } from "@/components/limits-panel";
 import { TensesGenerator } from "@/components/tenses-generator";
 import { SettingsPanel } from "@/components/settings-panel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   fetchHealth,
+  getClientId,
   readStoredGroqKey,
+  readStoredHfKey,
   readStoredProvider,
   writeStoredGroqKey,
+  writeStoredHfKey,
   writeStoredProvider,
   type HealthPayload,
   type ProviderId,
@@ -24,10 +28,13 @@ export default function HomePage() {
   const [health, setHealth] = useState<HealthPayload | null>(null);
   const [provider, setProvider] = useState<ProviderId>("ollama");
   const [groqApiKey, setGroqApiKey] = useState("");
+  const [hfApiKey, setHfApiKey] = useState("");
 
   useEffect(() => {
+    getClientId();
     setProvider(readStoredProvider());
     setGroqApiKey(readStoredGroqKey());
+    setHfApiKey(readStoredHfKey());
     fetchHealth()
       .then(setHealth)
       .catch(() => setHealth(null));
@@ -43,7 +50,13 @@ export default function HomePage() {
     writeStoredGroqKey(next);
   }
 
+  function onHfApiKeyChange(next: string) {
+    setHfApiKey(next);
+    writeStoredHfKey(next);
+  }
+
   const groqReady = Boolean(groqApiKey.trim()) || Boolean(health?.groq_configured);
+  const hfReady = Boolean(hfApiKey.trim()) || Boolean(health?.hf_configured);
 
   return (
     <main className="mx-auto w-full max-w-6xl space-y-4 px-3 py-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:space-y-6 sm:px-4 sm:py-8 sm:pb-8">
@@ -67,9 +80,7 @@ export default function HomePage() {
                 ? `Ollama: ${health.ollama_model}`
                 : "Ollama: offline"}
             </Badge>
-            <Badge>
-              {health.hf_configured ? "HF: ready" : "HF: not set"}
-            </Badge>
+            <Badge>{hfReady ? "HF: ready" : "HF: not set"}</Badge>
             <Badge>{groqReady ? "Groq: ready" : "Groq: not set"}</Badge>
           </div>
         )}
@@ -89,6 +100,10 @@ export default function HomePage() {
             <Settings className="size-5 sm:hidden" aria-hidden />
             Settings
           </TabsTrigger>
+          <TabsTrigger value="limits">
+            <Gauge className="size-5 sm:hidden" aria-hidden />
+            Limits
+          </TabsTrigger>
           <TabsTrigger value="changelog">
             <History className="size-5 sm:hidden" aria-hidden />
             <span className="sm:hidden">Versions</span>
@@ -96,10 +111,18 @@ export default function HomePage() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="grammar">
-          <GrammarFixer provider={provider} groqApiKey={groqApiKey} />
+          <GrammarFixer
+            provider={provider}
+            groqApiKey={groqApiKey}
+            hfApiKey={hfApiKey}
+          />
         </TabsContent>
         <TabsContent value="tenses">
-          <TensesGenerator provider={provider} groqApiKey={groqApiKey} />
+          <TensesGenerator
+            provider={provider}
+            groqApiKey={groqApiKey}
+            hfApiKey={hfApiKey}
+          />
         </TabsContent>
         <TabsContent value="settings">
           <SettingsPanel
@@ -107,7 +130,15 @@ export default function HomePage() {
             onChange={onProviderChange}
             groqApiKey={groqApiKey}
             onGroqApiKeyChange={onGroqApiKeyChange}
+            hfApiKey={hfApiKey}
+            onHfApiKeyChange={onHfApiKeyChange}
             health={health}
+          />
+        </TabsContent>
+        <TabsContent value="limits">
+          <LimitsPanel
+            hfApiKey={hfApiKey}
+            hfConfigured={Boolean(health?.hf_configured)}
           />
         </TabsContent>
         <TabsContent value="changelog">

@@ -128,7 +128,7 @@ class FallbackTests(unittest.TestCase):
     def test_selected_groq_does_not_use_huggingface(self):
         with patch(
             "app.llm._skip_reason",
-            side_effect=lambda name, groq_api_key=None: (
+            side_effect=lambda name, groq_api_key=None, hf_api_key=None: (
                 "GROQ_API_KEY is not configured" if name == "groq" else None
             ),
         ):
@@ -174,6 +174,27 @@ class FallbackTests(unittest.TestCase):
         )
         ollama.assert_not_called()
         hf.assert_not_called()
+
+    def test_request_hf_key_enables_huggingface(self):
+        with patch("app.llm.get_settings") as settings:
+            settings.return_value.hf_token = ""
+            settings.return_value.hf_configured = False
+            with patch("app.llm._huggingface_chat", return_value="hello from hf") as hf:
+                with patch("app.llm._ollama_chat") as ollama:
+                    with patch("app.llm._groq_chat") as groq:
+                        content, provider = chat(
+                            [{"role": "user", "content": "hi"}],
+                            provider="huggingface",
+                            hf_api_key="hf_test_not_a_real_key",
+                        )
+        self.assertEqual(content, "hello from hf")
+        self.assertEqual(provider, "huggingface")
+        hf.assert_called_once()
+        self.assertEqual(
+            hf.call_args.kwargs.get("hf_api_key"), "hf_test_not_a_real_key"
+        )
+        ollama.assert_not_called()
+        groq.assert_not_called()
 
 
 if __name__ == "__main__":

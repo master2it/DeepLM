@@ -102,7 +102,7 @@ def cache_set(key: str, value: dict) -> None:
     client = get_redis()
     if client is None:
         return
-        ttl = max(60, int(get_settings().redis_ttl_seconds or 43200))
+    ttl = max(60, int(get_settings().redis_ttl_seconds or 43200))
     try:
         payload = {k: v for k, v in value.items() if k != "cached"}
         client.set(key, json.dumps(payload, ensure_ascii=False), ex=ttl)

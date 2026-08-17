@@ -20,11 +20,12 @@ Ollama must listen on port `11434`.
 copy .env.example .env
 ```
 
-Optional Hugging Face key on the server. Groq can also be pasted in the Settings tab:
+Optional Hugging Face key on the server (capped at 30 generations per UTC day when visitors do not paste their own). Groq and HF keys can also be pasted in Settings:
 
 ```env
 HF_TOKEN=hf_your_token_here
 GROQ_API_KEY=gsk_your_key_here
+HF_DEFAULT_DAILY_LIMIT=30
 ```
 
 
@@ -134,7 +135,8 @@ python -m unittest tests.test_config tests.test_translation_quality -v
 
 - **Grammar/Spell Fixer** — default tab; default pair English → Persian; German and other languages; three styles (German ↔ Persian uses du/Sie and تو/شما)
 - **Tenses** — English: 12 tenses; German: 6 tenses (Präsens, Präteritum, Perfekt, Plusquamperfekt, Futur I, Futur II); Persian glosses on every card
-- **Settings** — choose Ollama / Hugging Face / Groq; paste a Groq API key (saved in the browser)
+- **Settings** — choose Ollama / Hugging Face / Groq; paste a Groq or Hugging Face API key (saved in the browser)
+- **Limits** — default Hugging Face key usage (30 per UTC day, browser id + IP); own HF token is uncapped
 - **Changelog** — Versions tab lists releases from `CHANGELOG.md`
 - **PWA** — installable app (manifest, service worker, Install button)
 

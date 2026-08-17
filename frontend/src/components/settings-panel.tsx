@@ -13,7 +13,7 @@ const OPTIONS: { id: ProviderId; title: string; hint: string }[] = [
   {
     id: "huggingface",
     title: "Hugging Face",
-    hint: "Cloud chat. Requires HF_TOKEN in the server .env.",
+    hint: "Cloud chat. Paste your HF token below, or leave empty to use the server HF_TOKEN (30 generations per UTC day).",
   },
   {
     id: "groq",
@@ -27,6 +27,8 @@ type Props = {
   onChange: (provider: ProviderId) => void;
   groqApiKey: string;
   onGroqApiKeyChange: (key: string) => void;
+  hfApiKey: string;
+  onHfApiKeyChange: (key: string) => void;
   health: HealthPayload | null;
 };
 
@@ -35,12 +37,15 @@ export function SettingsPanel({
   onChange,
   groqApiKey,
   onGroqApiKeyChange,
+  hfApiKey,
+  onHfApiKeyChange,
   health,
 }: Props) {
   const byId = Object.fromEntries(
     (health?.providers ?? []).map((p) => [p.id, p])
   );
   const groqReady = Boolean(groqApiKey.trim()) || Boolean(health?.groq_configured);
+  const hfReady = Boolean(hfApiKey.trim()) || Boolean(health?.hf_configured);
 
   return (
     <div className="space-y-4">
@@ -54,7 +59,11 @@ export function SettingsPanel({
           const info = byId[opt.id];
           const selected = provider === opt.id;
           const available =
-            opt.id === "groq" ? groqReady : Boolean(info?.available);
+            opt.id === "groq"
+              ? groqReady
+              : opt.id === "huggingface"
+                ? hfReady
+                : Boolean(info?.available);
           return (
             <label
               key={opt.id}
@@ -86,6 +95,34 @@ export function SettingsPanel({
           );
         })}
       </fieldset>
+      {provider === "huggingface" && (
+        <div className="space-y-2 rounded-lg border border-zinc-700 bg-zinc-900 p-4">
+          <Label htmlFor="hf-api-key">Hugging Face API key</Label>
+          <Input
+            className="mt-2"
+            id="hf-api-key"
+            type="password"
+            autoComplete="off"
+            placeholder="hf_…"
+            value={hfApiKey}
+            onChange={(e) => onHfApiKeyChange(e.target.value)}
+          />
+          <p className="text-xs text-zinc-500">
+            Saved in this browser only. Get a token at{" "}
+            <a
+              className="text-blue-400 underline"
+              href="https://huggingface.co/settings/tokens"
+              target="_blank"
+              rel="noreferrer"
+            >
+              huggingface.co/settings/tokens
+            </a>
+            . Leave empty to use the server{" "}
+            <code className="text-zinc-300">HF_TOKEN</code> (30 generations per
+            UTC day — see the Limits tab).
+          </p>
+        </div>
+      )}
       {provider === "groq" && (
         <div className="space-y-2 rounded-lg border border-zinc-700 bg-zinc-900 p-4">
           <Label htmlFor="groq-api-key">Groq API key</Label>

@@ -74,10 +74,12 @@ def _hf_chat_content(response: Any) -> str:
 
 
 def _skip_reason(
-    name: ProviderName, *, groq_api_key: str | None = None
+    name: ProviderName,
+    *,
+    groq_api_key: str | None = None,
+    hf_api_key: str | None = None,
 ) -> str | None:
-    settings = get_settings()
-    if name == "huggingface" and not settings.hf_configured:
+    if name == "huggingface" and not _resolve_hf_key(hf_api_key):
         return "HF_TOKEN is not configured"
     if name == "groq" and not _resolve_groq_key(groq_api_key):
         return "GROQ_API_KEY is not configured"
@@ -89,6 +91,13 @@ def _resolve_groq_key(groq_api_key: str | None) -> str:
     if override:
         return override
     return get_settings().groq_api_key.strip()
+
+
+def _resolve_hf_key(hf_api_key: str | None) -> str:
+    override = (hf_api_key or "").strip()
+    if override:
+        return override
+    return get_settings().hf_token.strip()
 
 
 def _ollama_chat(
@@ -126,9 +135,10 @@ def _huggingface_chat(
     *,
     temperature: float,
     max_tokens: int,
+    hf_api_key: str | None = None,
 ) -> str:
     settings = get_settings()
-    token = settings.hf_token.strip()
+    token = _resolve_hf_key(hf_api_key)
     if not token:
         raise LLMError("HF_TOKEN is not configured.")
     api = InferenceClient(token=token)
@@ -183,6 +193,7 @@ def chat(
     max_tokens: int = 2048,
     provider: str | None = None,
     groq_api_key: str | None = None,
+    hf_api_key: str | None = None,
 ) -> tuple[str, str]:
     """Return (content, provider). Explicit Settings choice is exclusive."""
     exclusive = bool(provider and str(provider).strip())
@@ -194,7 +205,9 @@ def chat(
     }
     errors: list[str] = []
     for name in provider_route(preferred, exclusive=exclusive):
-        skip = _skip_reason(name, groq_api_key=groq_api_key)
+        skip = _skip_reason(
+            name, groq_api_key=groq_api_key, hf_api_key=hf_api_key
+        )
         if skip:
             errors.append(f"{name}: {skip}")
             continue
@@ -205,6 +218,8 @@ def chat(
             }
             if name == "groq":
                 kwargs["groq_api_key"] = groq_api_key
+            if name == "huggingface":
+                kwargs["hf_api_key"] = hf_api_key
             content = handlers[name](messages, **kwargs)
             return content, name
         except Exception as exc:

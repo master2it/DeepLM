@@ -9,6 +9,8 @@ export type ProviderId = "ollama" | "huggingface" | "groq";
 
 export const PROVIDER_STORAGE_KEY = "deeplm.provider";
 export const GROQ_KEY_STORAGE_KEY = "deeplm.groq_api_key";
+export const HF_KEY_STORAGE_KEY = "deeplm.hf_api_key";
+export const CLIENT_ID_STORAGE_KEY = "deeplm.client_id";
 export const TENSE_LANG_STORAGE_KEY = "deeplm.tense_language";
 
 export type StylePair = { from: string; to: string };
@@ -79,6 +81,8 @@ export type HealthPayload = {
   groq_model: string;
   providers: ProviderInfo[];
   default_provider: ProviderId;
+  hf_default_daily_limit?: number;
+  redis?: boolean;
 };
 
 async function parseError(res: Response): Promise<string> {
@@ -116,6 +120,58 @@ export function writeStoredGroqKey(key: string) {
   } else {
     window.localStorage.removeItem(GROQ_KEY_STORAGE_KEY);
   }
+}
+
+export function readStoredHfKey(): string {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(HF_KEY_STORAGE_KEY) || "";
+}
+
+export function writeStoredHfKey(key: string) {
+  const trimmed = key.trim();
+  if (trimmed) {
+    window.localStorage.setItem(HF_KEY_STORAGE_KEY, trimmed);
+  } else {
+    window.localStorage.removeItem(HF_KEY_STORAGE_KEY);
+  }
+}
+
+export function getClientId(): string {
+  if (typeof window === "undefined") return "";
+  const existing = window.localStorage.getItem(CLIENT_ID_STORAGE_KEY);
+  if (existing) return existing;
+  const id =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `cid-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  window.localStorage.setItem(CLIENT_ID_STORAGE_KEY, id);
+  return id;
+}
+
+function apiHeaders(json = false): HeadersInit {
+  const headers: Record<string, string> = {};
+  if (json) headers["Content-Type"] = "application/json";
+  const clientId = getClientId();
+  if (clientId) headers["X-Client-Id"] = clientId;
+  return headers;
+}
+
+export type LimitsPayload = {
+  limit: number;
+  used: number;
+  remaining: number;
+  resets_at: string;
+  using_default_key: boolean;
+  redis: boolean;
+};
+
+export async function fetchLimits(ownKey: boolean): Promise<LimitsPayload> {
+  const res = await fetch(
+    `${API_BASE}/api/limits?own_key=${ownKey ? "true" : "false"}`,
+    { headers: apiHeaders() }
+  );
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
 }
 
 export function readStoredTenseLanguage(): TenseLanguage {
@@ -172,13 +228,15 @@ export async function postGrammar(body: {
   to_lang: string;
   provider: ProviderId;
   groq_api_key?: string;
+  hf_api_key?: string;
 }): Promise<GrammarResult> {
   const res = await fetch(`${API_BASE}/api/grammar`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: apiHeaders(true),
     body: JSON.stringify({
       ...body,
       groq_api_key: body.groq_api_key?.trim() || undefined,
+      hf_api_key: body.hf_api_key?.trim() || undefined,
     }),
   });
   if (!res.ok) throw new Error(await parseError(res));
@@ -189,7 +247,8 @@ export async function postTenses(
   text: string,
   provider: ProviderId,
   groqApiKey?: string,
-  language: TenseLanguage = "English"
+  language: TenseLanguage = "English",
+  hfApiKey?: string
 ): Promise<{
   items: TenseItem[];
   provider?: string;
@@ -197,12 +256,13 @@ export async function postTenses(
 }> {
   const res = await fetch(`${API_BASE}/api/tenses`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: apiHeaders(true),
     body: JSON.stringify({
       text,
       language,
       provider,
       groq_api_key: groqApiKey?.trim() || undefined,
+      hf_api_key: hfApiKey?.trim() || undefined,
     }),
   });
   if (!res.ok) throw new Error(await parseError(res));
@@ -213,7 +273,8 @@ export async function postTenseExplain(
   tense: string,
   provider: ProviderId,
   groqApiKey?: string,
-  language: TenseLanguage = "English"
+  language: TenseLanguage = "English",
+  hfApiKey?: string
 ): Promise<{
   explanation?: string;
   examples?: { text?: string; en?: string; english?: string; fa: string }[];
@@ -221,12 +282,13 @@ export async function postTenseExplain(
 }> {
   const res = await fetch(`${API_BASE}/api/tenses/explain`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: apiHeaders(true),
     body: JSON.stringify({
       tense,
       language,
       provider,
       groq_api_key: groqApiKey?.trim() || undefined,
+      hf_api_key: hfApiKey?.trim() || undefined,
     }),
   });
   if (!res.ok) throw new Error(await parseError(res));
