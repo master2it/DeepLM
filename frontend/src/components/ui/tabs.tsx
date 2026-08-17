@@ -13,7 +13,7 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "grid h-auto w-full grid-cols-2 gap-1 rounded-lg bg-zinc-800 p-1 text-zinc-400 sm:inline-flex sm:h-11 sm:w-auto sm:flex-wrap sm:items-center sm:justify-center",
+      "grid h-auto w-full grid-cols-4 gap-0 rounded-none bg-zinc-900 p-0 text-zinc-400 sm:inline-flex sm:h-11 sm:w-auto sm:flex-wrap sm:items-center sm:justify-center sm:gap-1 sm:rounded-lg sm:bg-zinc-800 sm:p-1",
       className
     )}
     {...props}
@@ -28,7 +28,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex min-h-10 w-full items-center justify-center rounded-md px-2 py-2 text-center text-xs font-semibold leading-tight ring-offset-zinc-950 transition-all focus-visible:outline-none data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-50 sm:w-auto sm:whitespace-nowrap sm:px-4 sm:py-1.5 sm:text-sm",
+      "inline-flex min-h-12 w-full flex-col items-center justify-center gap-0.5 rounded-none px-1 py-1.5 text-center text-[10px] font-semibold leading-tight ring-offset-zinc-950 transition-all focus-visible:outline-none data-[state=active]:bg-transparent data-[state=active]:text-zinc-50 sm:min-h-10 sm:w-auto sm:flex-row sm:whitespace-nowrap sm:rounded-md sm:px-4 sm:py-1.5 sm:text-sm sm:data-[state=active]:bg-zinc-700",
       className
     )}
     {...props}

@@ -1,2 +1,2 @@
 /** App semver. Updated by scripts/bump_version.py on each push to main. */
-export const APP_VERSION = "1.2.0";
+export const APP_VERSION = "1.3.0";

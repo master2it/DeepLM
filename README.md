@@ -78,6 +78,32 @@ set NEXT_PUBLIC_API_URL=http://localhost:8000
 npm run dev
 ```
 
+## Progressive Web App
+
+The frontend is installable (HTTPS production). Production build uses webpack so Serwist can inject the service worker:
+
+```bash
+cd frontend
+npm install
+npm run build
+npm run start
+```
+
+- Manifest: `/manifest.webmanifest`
+- Icons: `frontend/public/icons/icon-192.png`, `icon-512.png`
+- Service worker: `/sw.js` (generated at build, disabled in `next dev`)
+- Offline page: `/offline` (app shell only; API calls stay network-only)
+- In-app **Install app** in the header and Settings (Chromium). iOS: Share → Add to Home Screen
+
+### Lighthouse / test checklist
+
+- Chrome DevTools → Application → Manifest: name, 192+512 icons, `start_url` `/`, `display` standalone
+- Application → Service workers: `/sw.js` activated on HTTPS
+- Lighthouse PWA: installable, theme color `#09090b`, viewport
+- Offline: open `/`, toggle offline, reload → shell or `/offline`. Grammar/tenses submit still needs the API
+- Install: **Install app** + browser install prompt; iOS Add to Home Screen
+- Unchanged: tabs, Groq key, Railway CORS, `NEXT_PUBLIC_API_URL`
+
 ## Tests
 
 ```bash
@@ -91,6 +117,7 @@ python -m unittest tests.test_config tests.test_translation_quality -v
 - **12 Tenses** — English or German (language selector); Persian glosses on every card
 - **Settings** — choose Ollama / Hugging Face / Groq; paste a Groq API key (saved in the browser)
 - **Changelog** — Versions tab lists releases from `CHANGELOG.md`
+- **PWA** — installable app (manifest, service worker, Install button)
 
 ## LLM routing
 

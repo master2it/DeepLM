@@ -30,6 +30,24 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ---
 
+## [1.3.0] — 2026-08-17 — minor
+
+### 2026-08-17 — Mobile bottom tab bar
+- **Type:** patch
+- **Version:** 1.3.0
+- **Summary:** On small screens, primary tabs sit in a fixed bottom action bar (icon + label, safe-area padding). Desktop keeps the top tab list.
+- **Why:** feature / mobile UI
+- **Files:** `frontend/src/app/page.tsx`, `frontend/src/components/ui/tabs.tsx`
+
+### 2026-08-17 — Progressive Web App
+- **Type:** minor
+- **Version:** 1.3.0
+- **Summary:** Added web app manifest, PNG icons, Serwist service worker (API network-only), `/offline` fallback, and an Install app button (plus iOS Add to Home Screen hint).
+- **Why:** feature
+- **Files:** `frontend/src/app/manifest.ts`, `frontend/src/app/sw.ts`, `frontend/src/components/install-button.tsx`, `frontend/next.config.ts`
+
+---
+
 ## [1.2.0] — 2026-08-17 — minor
 
 ### 2026-08-17 — Changelog tab in the UI

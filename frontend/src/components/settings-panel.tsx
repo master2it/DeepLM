@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { InstallButton } from "@/components/install-button";
 import type { HealthPayload, ProviderId } from "@/lib/api";
 
 const OPTIONS: { id: ProviderId; title: string; hint: string }[] = [
@@ -86,6 +87,14 @@ export function SettingsPanel({
           );
         })}
       </fieldset>
+      <div className="space-y-2 rounded-lg border border-zinc-700 bg-zinc-900 p-4">
+        <p className="text-sm font-medium">Install DeepLM</p>
+        <p className="text-xs text-zinc-500">
+          Install as an app for a full-screen shortcut. Grammar and tenses still
+          need the network.
+        </p>
+        <InstallButton />
+      </div>
       {provider === "groq" && (
         <div className="space-y-2 rounded-lg border border-zinc-700 bg-zinc-900 p-4">
           <Label htmlFor="groq-api-key">Groq API key</Label>
