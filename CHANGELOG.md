@@ -28,6 +28,13 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+### 2026-08-17 — Sync pnpm lockfile for Serwist
+- **Type:** patch
+- **Version:** Unreleased
+- **Summary:** Updated `frontend/pnpm-lock.yaml` so Vercel `pnpm install` (frozen lockfile) includes `@serwist/next`, `serwist`, and `@serwist/cli`.
+- **Why:** deploy
+- **Files:** `frontend/pnpm-lock.yaml`
+
 ---
 
 ## [1.3.0] — 2026-08-17 — minor
