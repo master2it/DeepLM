@@ -8,6 +8,7 @@ const API_BASE = (
 export type ProviderId = "ollama" | "huggingface" | "groq";
 
 export const PROVIDER_STORAGE_KEY = "deeplm.provider";
+export const GROQ_KEY_STORAGE_KEY = "deeplm.groq_api_key";
 export const TENSE_LANG_STORAGE_KEY = "deeplm.tense_language";
 
 export type StylePair = { from: string; to: string };
@@ -115,6 +116,31 @@ export async function fetchLanguages(): Promise<LanguagesPayload> {
 
 export async function fetchHealth(): Promise<HealthPayload> {
   const res = await fetch(`${API_BASE}/health`);
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export type ChangelogChange = {
+  title: string;
+  type: string;
+  summary: string;
+  why: string;
+  files: string;
+};
+
+export type ChangelogRelease = {
+  version: string;
+  date: string;
+  kind: string;
+  notes: string;
+  changes: ChangelogChange[];
+};
+
+export async function fetchChangelog(): Promise<{
+  current: string;
+  releases: ChangelogRelease[];
+}> {
+  const res = await fetch(`${API_BASE}/api/changelog`);
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }

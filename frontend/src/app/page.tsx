@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ChangelogPanel } from "@/components/changelog-panel";
 import { GrammarFixer } from "@/components/grammar-fixer";
 import { TensesGenerator } from "@/components/tenses-generator";
 import { SettingsPanel } from "@/components/settings-panel";
@@ -79,6 +80,10 @@ export default function HomePage() {
             <span className="hidden sm:inline">12 Tenses Generator</span>
           </TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="changelog">
+            <span className="sm:hidden">Versions</span>
+            <span className="hidden sm:inline">Changelog</span>
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="grammar">
           <GrammarFixer provider={provider} groqApiKey={groqApiKey} />
@@ -94,6 +99,9 @@ export default function HomePage() {
             onGroqApiKeyChange={onGroqApiKeyChange}
             health={health}
           />
+        </TabsContent>
+        <TabsContent value="changelog">
+          <ChangelogPanel apiVersion={health?.version} />
         </TabsContent>
       </Tabs>
     </main>

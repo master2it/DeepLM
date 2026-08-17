@@ -18,6 +18,7 @@ from app.constants import (
     STYLE_VARIANTS,
     TENSE_LANGUAGES,
 )
+from app.changelog import load_changelog
 from app.grammar import get_styled_translations_from_ai
 from app.llm import providers_status
 from app.tenses import get_tense_explanation_from_ai, get_tenses_from_ai
@@ -82,6 +83,11 @@ def health():
 @app.get("/api/providers")
 def api_providers():
     return health()
+
+
+@app.get("/api/changelog")
+def changelog():
+    return load_changelog()
 
 
 @app.get("/api/languages")

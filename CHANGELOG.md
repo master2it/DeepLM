@@ -30,6 +30,17 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ---
 
+## [1.2.0] — 2026-08-17 — minor
+
+### 2026-08-17 — Changelog tab in the UI
+- **Type:** minor
+- **Version:** 1.2.0
+- **Summary:** Added a Changelog / Versions tab that loads releases from `GET /api/changelog` (parsed from CHANGELOG.md) and shows app + API versions with major/minor/patch/release badges.
+- **Why:** feature
+- **Files:** `backend/app/changelog.py`, `frontend/src/components/changelog-panel.tsx`, `frontend/src/app/page.tsx`
+
+---
+
 ## [1.1.0] — 2026-08-17 — minor
 
 ### 2026-08-17 — 12 tenses language selector (English / German)

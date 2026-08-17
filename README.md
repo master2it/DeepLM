@@ -90,6 +90,7 @@ python -m unittest tests.test_config tests.test_translation_quality -v
 - **Grammar/Spell Fixer** — default tab; Persian, German, English, and other pairs; three styles (German ↔ Persian uses du/Sie and تو/شما)
 - **12 Tenses** — English or German (language selector); Persian glosses on every card
 - **Settings** — choose Ollama / Hugging Face / Groq; paste a Groq API key (saved in the browser)
+- **Changelog** — Versions tab lists releases from `CHANGELOG.md`
 
 ## LLM routing
 
