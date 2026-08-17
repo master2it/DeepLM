@@ -1,5 +1,9 @@
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8000";
+const API_BASE = (
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === "production"
+    ? "https://deeplm.up.railway.app"
+    : "http://localhost:8000")
+).replace(/\/$/, "");
 
 export type ProviderId = "ollama" | "huggingface" | "groq";
 

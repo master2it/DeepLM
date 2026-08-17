@@ -14,7 +14,7 @@ services:
       HF_CHAT_MODEL: ${HF_CHAT_MODEL:-Qwen/Qwen2.5-72B-Instruct}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,https://deep-lm.vercel.app}
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

@@ -34,8 +34,7 @@ The repo root is a monorepo. Railpack builds the **FastAPI backend**. Deploy the
 Set these on the host:
 
 ```env
-PORT=8000
-CORS_ORIGINS=https://your-frontend.vercel.app,http://localhost:3000
+CORS_ORIGINS=https://deep-lm.vercel.app,http://localhost:3000
 HF_TOKEN=
 GROQ_API_KEY=
 OLLAMA_BASE_URL=http://127.0.0.1:11434
