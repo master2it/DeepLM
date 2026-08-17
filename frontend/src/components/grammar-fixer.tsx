@@ -92,8 +92,8 @@ export function GrammarFixer({
         dir={rtl.has(fromLang) ? "rtl" : "ltr"}
         className="min-h-[100px]"
       />
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-[160px] space-y-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="w-full space-y-1 sm:min-w-40 sm:flex-1">
           <Label>From</Label>
           <Select value={fromLang} onValueChange={setFromLang}>
             <SelectTrigger>
@@ -113,14 +113,15 @@ export function GrammarFixer({
           variant="outline"
           size="icon"
           title="Swap From / To"
+          className="mx-auto sm:mx-0"
           onClick={() => {
             setFromLang(toLang);
             setToLang(fromLang);
           }}
         >
-          <ArrowLeftRight className="h-4 w-4" />
+          <ArrowLeftRight className="h-4 w-4 rotate-90 sm:rotate-0" />
         </Button>
-        <div className="min-w-[160px] space-y-1">
+        <div className="w-full space-y-1 sm:min-w-40 sm:flex-1">
           <Label>To</Label>
           <Select value={toLang} onValueChange={setToLang}>
             <SelectTrigger>
@@ -135,7 +136,7 @@ export function GrammarFixer({
             </SelectContent>
           </Select>
         </div>
-        <Button type="submit" variant="success" disabled={loading}>
+        <Button type="submit" variant="success" disabled={loading} className="w-full sm:w-auto">
           {loading ? "Translating…" : "Translate with Styles"}
         </Button>
       </div>
@@ -148,7 +149,7 @@ export function GrammarFixer({
               <CardHeader>
                 <CardTitle className="text-blue-400">Grammar notes</CardTitle>
               </CardHeader>
-              <CardContent className="whitespace-pre-wrap text-sm text-zinc-300">
+              <CardContent className="whitespace-pre-wrap break-words text-sm text-zinc-300">
                 {result.grammar_notes}
               </CardContent>
             </Card>
@@ -160,17 +161,17 @@ export function GrammarFixer({
                 <CardHeader>
                   <CardTitle className="text-blue-400">{label}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <p>
+                <CardContent className="space-y-2 overflow-hidden text-sm">
+                  <p className="break-words">
                     <span className="text-zinc-400">[From]: </span>
-                    <span dir={rtl.has(result.from_lang) ? "rtl" : "ltr"} className="inline-block">
+                    <span dir={rtl.has(result.from_lang) ? "rtl" : "ltr"} className="inline">
                       {pair.from || "(empty)"}
                     </span>
                   </p>
                   {result.wants_translation && (
-                    <p>
+                    <p className="break-words">
                       <span className="text-zinc-400">[To]: </span>
-                      <span dir={rtl.has(result.to_lang) ? "rtl" : "ltr"} className="inline-block">
+                      <span dir={rtl.has(result.to_lang) ? "rtl" : "ltr"} className="inline">
                         {pair.to || "(empty)"}
                       </span>
                     </p>

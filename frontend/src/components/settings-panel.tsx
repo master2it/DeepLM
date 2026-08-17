@@ -58,7 +58,7 @@ export function SettingsPanel({
           return (
             <label
               key={opt.id}
-              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 ${
+              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 sm:p-4 ${
                 selected
                   ? "border-blue-500 bg-zinc-800"
                   : "border-zinc-700 bg-zinc-900"

@@ -78,7 +78,7 @@ export function TensesGenerator({
           onChange={(e) => setText(e.target.value)}
           placeholder="I did"
         />
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading} className="w-full sm:w-auto">
           {loading ? "Generating…" : "Generate 12 Tenses"}
         </Button>
       </form>
@@ -87,8 +87,8 @@ export function TensesGenerator({
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {items.map((item) => (
           <Card key={item.tense}>
-            <CardHeader className="flex-row items-start justify-between space-y-0">
-              <CardTitle className="pr-2">{item.tense}</CardTitle>
+            <CardHeader className="flex-row items-start justify-between space-y-0 gap-2">
+              <CardTitle className="min-w-0 flex-1 break-words pr-2 text-sm sm:text-base">{item.tense}</CardTitle>
               <Button
                 type="button"
                 variant="ghost"
@@ -99,9 +99,9 @@ export function TensesGenerator({
                 <Info className="h-4 w-4" />
               </Button>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <p>{item.english}</p>
-              <p dir="rtl" className="text-zinc-400">
+            <CardContent className="space-y-2 overflow-hidden text-sm">
+              <p className="break-words">{item.english}</p>
+              <p dir="rtl" className="break-words text-zinc-400">
                 {item.persian}
               </p>
             </CardContent>
@@ -109,7 +109,7 @@ export function TensesGenerator({
         ))}
       </div>
       <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto max-w-xl">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Tense explanation: {infoTitle}</DialogTitle>
           </DialogHeader>

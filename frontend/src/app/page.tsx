@@ -42,10 +42,10 @@ export default function HomePage() {
   const groqReady = Boolean(groqApiKey.trim()) || Boolean(health?.groq_configured);
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+    <main className="mx-auto w-full max-w-6xl space-y-4 px-3 py-4 sm:space-y-6 sm:px-4 sm:py-8">
+      <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">DeepLM</h1>
+          <h1 className="text-xl font-bold sm:text-2xl">DeepLM</h1>
           <p className="text-sm text-zinc-400">
             Grammar fixer and 12 tenses — pick a provider in Settings
           </p>
@@ -66,8 +66,14 @@ export default function HomePage() {
       </header>
       <Tabs defaultValue="grammar">
         <TabsList>
-          <TabsTrigger value="grammar">Grammar/Spell Fixer</TabsTrigger>
-          <TabsTrigger value="tenses">12 Tenses Generator</TabsTrigger>
+          <TabsTrigger value="grammar">
+            <span className="sm:hidden">Grammar</span>
+            <span className="hidden sm:inline">Grammar/Spell Fixer</span>
+          </TabsTrigger>
+          <TabsTrigger value="tenses">
+            <span className="sm:hidden">Tenses</span>
+            <span className="hidden sm:inline">12 Tenses Generator</span>
+          </TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="grammar">
