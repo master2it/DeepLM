@@ -44,6 +44,7 @@ export type ProviderInfo = {
 
 export type HealthPayload = {
   ok: boolean;
+  version?: string;
   ollama: boolean;
   hf_configured: boolean;
   groq_configured: boolean;

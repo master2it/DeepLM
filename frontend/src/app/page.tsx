@@ -15,6 +15,7 @@ import {
   type HealthPayload,
   type ProviderId,
 } from "@/lib/api";
+import { APP_VERSION } from "@/lib/version";
 
 export default function HomePage() {
   const [health, setHealth] = useState<HealthPayload | null>(null);
@@ -45,7 +46,10 @@ export default function HomePage() {
     <main className="mx-auto w-full max-w-6xl space-y-4 px-3 py-4 sm:space-y-6 sm:px-4 sm:py-8">
       <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold sm:text-2xl">DeepLM</h1>
+          <h1 className="flex flex-wrap items-baseline gap-2 text-xl font-bold sm:text-2xl">
+            DeepLM
+            <span className="text-xs font-normal text-zinc-500">v{APP_VERSION}</span>
+          </h1>
           <p className="text-sm text-zinc-400">
             Grammar fixer and 12 tenses — pick a provider in Settings
           </p>
@@ -92,6 +96,10 @@ export default function HomePage() {
           />
         </TabsContent>
       </Tabs>
+      <p className="text-xs text-zinc-500">
+        App v{APP_VERSION}
+        {health?.version ? ` · API v${health.version}` : ""}
+      </p>
     </main>
   );
 }

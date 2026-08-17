@@ -19,10 +19,11 @@ from app.constants import (
 from app.grammar import get_styled_translations_from_ai
 from app.llm import providers_status
 from app.tenses import get_tense_explanation_from_ai, get_tenses_from_ai
+from app.version import APP_VERSION
 
 settings = get_settings()
 
-app = FastAPI(title="DeepLM API", version="2.0.0")
+app = FastAPI(title="DeepLM API", version=APP_VERSION)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -62,6 +63,7 @@ def health():
     by_id = {p["id"]: p for p in providers}
     return {
         "ok": True,
+        "version": APP_VERSION,
         "ollama": by_id["ollama"]["available"],
         "hf_configured": by_id["huggingface"]["available"],
         "groq_configured": by_id["groq"]["available"],
