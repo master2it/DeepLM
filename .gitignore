@@ -1,4 +1,4 @@
-# Local secrets — never commit
+# Local secrets
 .env
 .env.local
 *.env.local
@@ -10,7 +10,12 @@ __pycache__/
 .venv/
 venv/
 
-# PyInstaller
+# Node
+node_modules/
+.next/
+frontend/.next/
+
+# PyInstaller (legacy)
 build/
 dist/
 *.exe

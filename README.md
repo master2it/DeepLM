@@ -1,88 +1,79 @@
-# English AI Assistant
+# DeepLM (FastAPI + Next.js)
 
-## Setup (development)
+Grammar/Spell Fixer and 12 Tenses in the browser. The API tries **local Ollama** (`deepseek-r1`, thinking off) first, then **Hugging Face** if Ollama fails.
+
+## Prerequisites
+
+- Docker Desktop
+- [Ollama](https://ollama.com) on the host (not in Docker)
 
 ```bash
-uv venv
-.venv\Scripts\activate
-uv pip install -r requirements-language.txt
+ollama pull deepseek-r1
+ollama serve
+```
+
+Ollama must listen on port `11434`.
+
+## Setup
+
+```bash
 copy .env.example .env
 ```
 
-Edit `.env` (local only — never commit) and set:
+Optional: set `HF_TOKEN` in `.env` so the API can fall back when Ollama is down.
 
-- `HF_TOKEN` — required ([create a token](https://huggingface.co/settings/tokens))
+```env
+HF_TOKEN=hf_your_token_here
+```
 
-Optional:
-
-- `HF_CHAT_MODEL` — default `Qwen/Qwen2.5-72B-Instruct` (12 Tenses + Grammar/Spell Fixer)
-
-## Run (source)
+## Run with Docker
 
 ```bash
-python language.py
+docker compose up --build
 ```
 
-Loads `HF_TOKEN` from the process environment, with optional `.env` via `python-dotenv` (project folder only — not CWD).
+- App: http://localhost:3000
+- API: http://localhost:8000
+- Health: http://localhost:8000/health
 
-## Packaged Windows `.exe` (no `.env`)
+## Local development (without Docker)
 
-Build (does **not** bundle `.env`):
+Backend:
 
 ```bash
-pyinstaller language.spec
+cd backend
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+set OLLAMA_BASE_URL=http://127.0.0.1:11434
+uvicorn app.main:app --reload --port 8000
 ```
 
-Output: `dist\translator.exe`
+Frontend:
 
-Configure auth with a **Windows user environment variable** (not a `.env` file):
-
-```cmd
-setx HF_TOKEN "hf_your_token_here"
+```bash
+cd frontend
+npm install
+set NEXT_PUBLIC_API_URL=http://localhost:8000
+npm run dev
 ```
-
-Then **restart** CMD/PowerShell and the app so `setx` is picked up. Verify:
-
-```cmd
-echo %HF_TOKEN%
-```
-
-Run:
-
-```cmd
-dist\translator.exe
-```
-
-### Security
-
-- Do **not** embed `HF_TOKEN` in the `.exe`, source, or PyInstaller datas.
-- Anything shipped inside a distributed binary can be extracted.
-- For public distribution, prefer a backend that holds the Hugging Face credential.
 
 ## Tests
 
 ```bash
+cd backend
 python -m unittest tests.test_config tests.test_translation_quality -v
-```
-
-Live model checks (optional):
-
-```bash
-set RUN_LIVE_TRANSLATION_TESTS=1
-python -m unittest tests.test_translation_quality.LivePersianEnglishTests -v
 ```
 
 ## Features
 
-- **12 Tenses** — HuggingFace chat model
-- **Grammar/Spell Fixer** — default tab; Persian → natural American English (B2); 3 styles; grammar notes
+- **Grammar/Spell Fixer** — default tab; Persian → natural American English (B2); three styles
+- **12 Tenses** — conjugate a short English phrase with Persian glosses
 
-## Translation architecture
+## LLM routing
 
-| Path | Model | How |
-|------|--------|-----|
-| Grammar/Spell Fixer | `HF_CHAT_MODEL` (LLM chat) | Detect → analyze implicit subjects → **canonical_meaning** → style variants from that meaning |
+1. Ollama `POST /api/chat` with `think: false`
+2. Strip leftover `<think>` blocks
+3. Hugging Face `Qwen/Qwen2.5-72B-Instruct` if Ollama errors
 
-- Context can be passed as `context=` to `get_styled_translations_from_ai` (UI does not yet); each turn is independent by default.
-- Styles are **not** three independent translations: they must share one canonical reading (tone/register only).
-- A heuristic retry catches Persian impersonal «آماده میشه» wrongly rendered as English «I'll be ready».
+`HF_TOKEN` is not required at startup. Requests fail only if both providers fail.
