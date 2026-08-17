@@ -21,11 +21,26 @@ TARGET_LANGUAGES = {
     "Hindi": "hin_Deva",
 }
 RTL_TARGETS = {"Persian", "Arabic"}
-DEFAULT_GRAMMAR_FROM = "Persian"
-DEFAULT_GRAMMAR_TO = "English"
+DEFAULT_GRAMMAR_FROM = "English"
+DEFAULT_GRAMMAR_TO = "Persian"
 GRAMMAR_LANGUAGES = list(TARGET_LANGUAGES.keys())
 TENSE_LANGUAGES = ["English", "German"]
 DEFAULT_TENSE_LANGUAGE = "English"
+GERMAN_TENSES: tuple[tuple[str, str], ...] = (
+    ("praesens", "Präsens"),
+    ("praeteritum", "Präteritum"),
+    ("perfekt", "Perfekt"),
+    ("plusquamperfekt", "Plusquamperfekt"),
+    ("futur_i", "Futur I"),
+    ("futur_ii", "Futur II"),
+)
+GERMAN_TENSE_KEYS = [key for key, _ in GERMAN_TENSES]
+GERMAN_TENSE_LABELS = [label for _, label in GERMAN_TENSES]
+ENGLISH_TENSE_COUNT = 12
+TENSE_COUNTS = {
+    "English": ENGLISH_TENSE_COUNT,
+    "German": len(GERMAN_TENSE_LABELS),
+}
 
 STYLE_VARIANTS = (
     ("Friendly / Casual", "friendly_casual"),

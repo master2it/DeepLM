@@ -37,8 +37,8 @@ export function GrammarFixer({
 }) {
   const [meta, setMeta] = useState<LanguagesPayload | null>(null);
   const [text, setText] = useState("");
-  const [fromLang, setFromLang] = useState("Persian");
-  const [toLang, setToLang] = useState("English");
+  const [fromLang, setFromLang] = useState("English");
+  const [toLang, setToLang] = useState("Persian");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GrammarResult | null>(null);

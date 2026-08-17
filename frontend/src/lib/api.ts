@@ -26,9 +26,28 @@ export type GrammarResult = {
   everyday_neutral: StylePair;
 };
 
-export type TenseItem = { tense: string; text: string; persian: string };
+export type GermanTense =
+  | "praesens"
+  | "praeteritum"
+  | "perfekt"
+  | "plusquamperfekt"
+  | "futur_i"
+  | "futur_ii";
+
+export type TenseItem = {
+  tense: string;
+  text: string;
+  persian: string;
+  english?: string;
+  key?: GermanTense;
+};
 
 export type TenseLanguage = "English" | "German";
+
+export const DEFAULT_TENSE_COUNTS: Record<TenseLanguage, number> = {
+  English: 12,
+  German: 6,
+};
 
 export type LanguagesPayload = {
   languages: string[];
@@ -38,6 +57,8 @@ export type LanguagesPayload = {
   styles: { label: string; key: string }[];
   tense_languages?: string[];
   default_tense_language?: string;
+  tense_counts?: Partial<Record<TenseLanguage, number>>;
+  german_tenses?: { key: GermanTense; label: string }[];
 };
 
 export type ProviderInfo = {
@@ -195,7 +216,7 @@ export async function postTenseExplain(
   language: TenseLanguage = "English"
 ): Promise<{
   explanation?: string;
-  examples?: { text?: string; en?: string; fa: string }[];
+  examples?: { text?: string; en?: string; english?: string; fa: string }[];
   provider?: string;
 }> {
   const res = await fetch(`${API_BASE}/api/tenses/explain`, {

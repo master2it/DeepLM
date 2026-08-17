@@ -1,0 +1,17 @@
+# On the API service, share Redis plugin vars (do not only set them on Redis):
+# REDIS_URL, REDISHOST, REDISPORT, REDISUSER, REDIS_PASSWORD
+# REDISHOST is RAILWAY_PRIVATE_DOMAIN — API and Redis must be in the same project.
+
+[build]
+builder = "RAILPACK"
+
+[deploy]
+startCommand = "cd backend && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+restartPolicyType = "ON_FAILURE"
+
+[variables]
+REDIS_TTL_SECONDS = "43200"
+
+[environments.local.variables]
+REDIS_URL = "redis://127.0.0.1:6379/0"
+REDIS_TTL_SECONDS = "43200"

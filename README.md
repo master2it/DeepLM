@@ -44,7 +44,13 @@ CORS_ORIGINS=https://deep-lm.vercel.app,http://localhost:3000
 HF_TOKEN=
 GROQ_API_KEY=
 OLLAMA_BASE_URL=http://127.0.0.1:11434
+REDIS_URL=
+REDIS_TTL_SECONDS=43200
 ```
+
+Add a **Redis** plugin on the Railway project (same environment as the API). Railway injects `REDIS_URL` (and often `REDIS_PRIVATE_URL`). Grammar and tenses responses are cached for 12 hours; Groq keys are never stored. `GET /health` includes `"redis": true` when the cache is reachable.
+
+Local Redis is in `docker-compose.yml`. `railway.toml` `[environments.local.variables]` sets `REDIS_URL=redis://127.0.0.1:6379/0` for `railway run`.
 
 `railpack.json` starts `uvicorn` from `backend/`. Do not set the service root directory to `frontend/`, and do not set a custom `start.sh` unless that file exists.
 
@@ -66,6 +72,7 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 set OLLAMA_BASE_URL=http://127.0.0.1:11434
+set REDIS_URL=redis://127.0.0.1:6379/0
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -93,7 +100,7 @@ npm run start
 - Icons: `frontend/public/icons/icon-192.png`, `icon-512.png`
 - Service worker: `/sw.js` (generated at build, disabled in `next dev`)
 - Offline page: `/offline` (app shell only; API calls stay network-only)
-- In-app **Install app** in the header and Settings (Chromium). iOS: Share → Add to Home Screen
+- In-app **Install app** in the header (Chromium). iOS: Share → Add to Home Screen
 
 ### Lighthouse / test checklist
 
@@ -113,8 +120,8 @@ python -m unittest tests.test_config tests.test_translation_quality -v
 
 ## Features
 
-- **Grammar/Spell Fixer** — default tab; Persian, German, English, and other pairs; three styles (German ↔ Persian uses du/Sie and تو/شما)
-- **12 Tenses** — English or German (language selector); Persian glosses on every card
+- **Grammar/Spell Fixer** — default tab; default pair English → Persian; German and other languages; three styles (German ↔ Persian uses du/Sie and تو/شما)
+- **Tenses** — English: 12 tenses; German: 6 tenses (Präsens, Präteritum, Perfekt, Plusquamperfekt, Futur I, Futur II); Persian glosses on every card
 - **Settings** — choose Ollama / Hugging Face / Groq; paste a Groq API key (saved in the browser)
 - **Changelog** — Versions tab lists releases from `CHANGELOG.md`
 - **PWA** — installable app (manifest, service worker, Install button)

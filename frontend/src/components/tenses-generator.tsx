@@ -26,6 +26,7 @@ import {
   postTenses,
   readStoredTenseLanguage,
   writeStoredTenseLanguage,
+  DEFAULT_TENSE_COUNTS,
   type ProviderId,
   type TenseItem,
   type TenseLanguage,
@@ -39,6 +40,9 @@ export function TensesGenerator({
   groqApiKey: string;
 }) {
   const [languages, setLanguages] = useState<string[]>(["English", "German"]);
+  const [tenseCounts, setTenseCounts] = useState<Record<string, number>>(
+    DEFAULT_TENSE_COUNTS
+  );
   const [language, setLanguage] = useState<TenseLanguage>("English");
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,6 +60,9 @@ export function TensesGenerator({
       .then((data) => {
         if (data.tense_languages?.length) {
           setLanguages(data.tense_languages);
+        }
+        if (data.tense_counts) {
+          setTenseCounts({ ...DEFAULT_TENSE_COUNTS, ...data.tense_counts });
         }
       })
       .catch(() => {});
@@ -97,7 +104,11 @@ export function TensesGenerator({
     try {
       const data = await postTenseExplain(tense, provider, groqApiKey, language);
       const examples = (data.examples || [])
-        .map((ex, i) => `${i + 1}. ${ex.text || ex.en || ""}\n${ex.fa}`)
+        .map((ex, i) => {
+          const de = ex.text || ex.en || "";
+          const en = ex.english ? `\n${ex.english}` : "";
+          return `${i + 1}. ${de}${en}\n${ex.fa}`;
+        })
         .join("\n\n");
       setInfoBody(`${data.explanation || ""}\n\n${examples}`.trim());
     } catch (err) {
@@ -108,20 +119,25 @@ export function TensesGenerator({
   }
 
   const placeholder = language === "German" ? "Ich arbeite" : "I did";
+  const tenseCount = tenseCounts[language] ?? DEFAULT_TENSE_COUNTS[language];
+  function labelFor(lang: string) {
+    const n = tenseCounts[lang] ?? (lang === "German" ? 6 : 12);
+    return `${lang} (${n} ${n === 1 ? "tense" : "tenses"})`;
+  }
 
   return (
     <div className="space-y-4">
       <form onSubmit={onSubmit} className="space-y-3">
-        <div className="w-full max-w-xs space-y-1">
+        <div className="w-full max-w-sm space-y-1">
           <Label>Language</Label>
           <Select value={language} onValueChange={onLanguageChange}>
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue>{labelFor(language)}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {languages.map((lang) => (
                 <SelectItem key={lang} value={lang}>
-                  {lang}
+                  {labelFor(lang)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -129,8 +145,8 @@ export function TensesGenerator({
         </div>
         <p className="text-sm text-zinc-400">
           {language === "German"
-            ? "Enter a short German (or English) phrase. You get 12 tense cards in German with Persian."
-            : "Enter a short English text. You get 12 English tenses with Persian."}
+            ? `German has ${tenseCount} tenses: Präsens, Präteritum, Perfekt, Plusquamperfekt, Futur I, Futur II. Enter a short German (or English) phrase.`
+            : `English has ${tenseCount} tenses. Enter a short English text. You get Persian on every card.`}
         </p>
         <Textarea
           value={text}
@@ -138,18 +154,26 @@ export function TensesGenerator({
           placeholder={placeholder}
         />
         <Button type="submit" disabled={loading} className="w-full sm:w-auto">
-          {loading ? "Generating…" : "Generate 12 Tenses"}
+          {loading
+            ? "Generating…"
+            : `Generate ${tenseCount} Tenses`}
         </Button>
       </form>
       {error && <p className="text-sm text-red-400">{error}</p>}
       {usedProvider && (
         <Badge>
-          via {usedProvider} · {language}
+          via {usedProvider} · {language} · {tenseCount} tenses
         </Badge>
       )}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div
+        className={
+          language === "German"
+            ? "grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+            : "grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+        }
+      >
         {items.map((item) => (
-          <Card key={item.tense}>
+          <Card key={item.key || item.tense}>
             <CardHeader className="flex-row items-start justify-between space-y-0 gap-2">
               <CardTitle className="min-w-0 flex-1 break-words pr-2 text-sm sm:text-base">
                 {item.tense}
@@ -168,6 +192,11 @@ export function TensesGenerator({
               <p className="break-words" dir="ltr">
                 {item.text}
               </p>
+              {item.english && (
+                <p className="break-words text-zinc-300" dir="ltr">
+                  {item.english}
+                </p>
+              )}
               <p dir="rtl" className="break-words text-zinc-400">
                 {item.persian}
               </p>

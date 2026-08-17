@@ -28,23 +28,83 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+---
+
+## [1.4.0] — 2026-08-17 — minor
+
+### 2026-08-17 — Redis cache TTL 12 hours
+- **Type:** patch
+- **Version:** 1.4.0
+- **Summary:** Grammar and tenses Redis cache TTL is 12 hours (43200 seconds).
+- **Why:** feature
+- **Files:** `backend/app/config.py`, `backend/app/cache.py`, `docker-compose.yml`, `railway.toml`
+
+### 2026-08-17 — Railway Redis env aliases
+- **Type:** patch
+- **Version:** 1.4.0
+- **Summary:** Redis settings accept Railway plugin names (REDISHOST, REDISPORT, REDISUSER, REDISPASSWORD). Unresolved `${{...}}` REDIS_URL templates are ignored and the URL is built from host/user/password instead.
+- **Why:** deploy
+- **Files:** `backend/app/config.py`
+
+### 2026-08-17 — Redis cache for grammar and tenses
+- **Type:** minor
+- **Version:** 1.4.0
+- **Summary:** Grammar and tenses generations are cached in Redis (12-hour TTL). Local Redis runs via Docker Compose; Railway uses REDIS_URL from the Redis plugin. Groq keys are not stored. Cache misses if Redis is down.
+- **Why:** feature
+- **Files:** `backend/app/cache.py`, `backend/app/main.py`, `docker-compose.yml`, `railway.toml`
+
+### 2026-08-17 — Show tense count per language
+- **Type:** patch
+- **Version:** 1.4.0
+- **Summary:** Tenses language picker and copy show how many tenses each language has (English 12, German 6).
+- **Why:** copy
+- **Files:** `frontend/src/components/tenses-generator.tsx`, `backend/app/constants.py`, `backend/app/main.py`
+
+### 2026-08-17 — German 6-tense model
+- **Type:** minor
+- **Version:** 1.4.0
+- **Summary:** German Tenses now uses exactly six tenses (Präsens, Präteritum, Perfekt, Plusquamperfekt, Futur I, Futur II) with canonical keys, English glosses, and teacher rules for spoken Perfekt vs written Präteritum. English still uses 12 tenses.
+- **Why:** feature
+- **Files:** `backend/app/tenses.py`, `backend/app/constants.py`, `frontend/src/components/tenses-generator.tsx`
+
+### 2026-08-17 — Remove Install from Settings
+- **Type:** patch
+- **Version:** 1.4.0
+- **Summary:** Removed the Install DeepLM block from Settings. The header Install app button remains.
+- **Why:** copy
+- **Files:** `frontend/src/components/settings-panel.tsx`, `README.md`
+
+### 2026-08-17 — Rename tenses tab
+- **Type:** patch
+- **Version:** 1.4.0
+- **Summary:** Desktop tab label is now Tenses (was 12 Tenses Generator).
+- **Why:** copy
+- **Files:** `frontend/src/app/page.tsx`
+
+### 2026-08-17 — Default grammar pair English → Persian
+- **Type:** patch
+- **Version:** 1.4.0
+- **Summary:** Grammar/Spell Fixer now defaults from English to Persian.
+- **Why:** feature
+- **Files:** `backend/app/constants.py`, `frontend/src/components/grammar-fixer.tsx`, `README.md`
+
 ### 2026-08-17 — Groq model openai/gpt-oss-120b
 - **Type:** patch
-- **Version:** Unreleased
+- **Version:** 1.4.0
 - **Summary:** Default Groq model is now `openai/gpt-oss-120b` (was `llama-3.3-70b-versatile`).
 - **Why:** feature
 - **Files:** `backend/app/config.py`, `.env.example`, `docker-compose.yml`
 
 ### 2026-08-17 — Honor selected LLM provider
 - **Type:** patch
-- **Version:** Unreleased
+- **Version:** 1.4.0
 - **Summary:** Grammar, tenses, and explain use only the Settings provider. Switching to Groq no longer falls back to Hugging Face if Groq is skipped or fails.
 - **Why:** bug
 - **Files:** `backend/app/llm.py`, `frontend/src/components/settings-panel.tsx`
 
 ### 2026-08-17 — Sync pnpm lockfile for Serwist
 - **Type:** patch
-- **Version:** Unreleased
+- **Version:** 1.4.0
 - **Summary:** Updated `frontend/pnpm-lock.yaml` so Vercel `pnpm install` (frozen lockfile) includes `@serwist/next`, `serwist`, and `@serwist/cli`.
 - **Why:** deploy
 - **Files:** `frontend/pnpm-lock.yaml`

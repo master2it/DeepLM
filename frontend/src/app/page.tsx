@@ -83,8 +83,7 @@ export default function HomePage() {
           </TabsTrigger>
           <TabsTrigger value="tenses">
             <BookOpen className="size-5 sm:hidden" aria-hidden />
-            <span className="sm:hidden">Tenses</span>
-            <span className="hidden sm:inline">12 Tenses Generator</span>
+            Tenses
           </TabsTrigger>
           <TabsTrigger value="settings">
             <Settings className="size-5 sm:hidden" aria-hidden />

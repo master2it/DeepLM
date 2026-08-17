@@ -13,12 +13,14 @@ from app.constants import (
     DEFAULT_GRAMMAR_FROM,
     DEFAULT_GRAMMAR_TO,
     DEFAULT_TENSE_LANGUAGE,
+    GERMAN_TENSES,
     GRAMMAR_LANGUAGES,
     RTL_TARGETS,
     STYLE_VARIANTS,
+    TENSE_COUNTS,
     TENSE_LANGUAGES,
 )
-from app.changelog import load_changelog
+from app.cache import cached_result, redis_reachable
 from app.grammar import get_styled_translations_from_ai
 from app.llm import providers_status
 from app.tenses import get_tense_explanation_from_ai, get_tenses_from_ai
@@ -77,6 +79,7 @@ def health():
         "groq_model": by_id["groq"]["model"],
         "providers": providers,
         "default_provider": "ollama",
+        "redis": redis_reachable(),
     }
 
 
@@ -100,18 +103,32 @@ def languages():
         "styles": [{"label": label, "key": key} for label, key in STYLE_VARIANTS],
         "tense_languages": TENSE_LANGUAGES,
         "default_tense_language": DEFAULT_TENSE_LANGUAGE,
+        "tense_counts": TENSE_COUNTS,
+        "german_tenses": [
+            {"key": key, "label": label} for key, label in GERMAN_TENSES
+        ],
     }
 
 
 @app.post("/api/grammar")
 def grammar(req: GrammarRequest):
-    result = get_styled_translations_from_ai(
-        req.text.strip(),
-        from_lang=req.from_lang,
-        to_lang=req.to_lang,
-        context=req.context,
-        provider=req.provider,
-        groq_api_key=req.groq_api_key,
+    result = cached_result(
+        "grammar",
+        {
+            "text": req.text.strip(),
+            "from_lang": req.from_lang,
+            "to_lang": req.to_lang,
+            "context": req.context or "",
+            "provider": req.provider or "",
+        },
+        lambda: get_styled_translations_from_ai(
+            req.text.strip(),
+            from_lang=req.from_lang,
+            to_lang=req.to_lang,
+            context=req.context,
+            provider=req.provider,
+            groq_api_key=req.groq_api_key,
+        ),
     )
     if isinstance(result, dict) and result.get("error"):
         raise HTTPException(status_code=502, detail=result["error"])
@@ -120,11 +137,19 @@ def grammar(req: GrammarRequest):
 
 @app.post("/api/tenses")
 def tenses(req: TensesRequest):
-    result = get_tenses_from_ai(
-        req.text.strip(),
-        language=req.language,
-        provider=req.provider,
-        groq_api_key=req.groq_api_key,
+    result = cached_result(
+        "tenses",
+        {
+            "text": req.text.strip(),
+            "language": req.language,
+            "provider": req.provider or "",
+        },
+        lambda: get_tenses_from_ai(
+            req.text.strip(),
+            language=req.language,
+            provider=req.provider,
+            groq_api_key=req.groq_api_key,
+        ),
     )
     if isinstance(result, dict) and result.get("error"):
         raise HTTPException(status_code=502, detail=result["error"])

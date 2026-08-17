@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.config import mask_secret  # noqa: E402
+from app.config import Settings, mask_secret  # noqa: E402
 from app.llm import LLMError, chat, provider_route, strip_thinking  # noqa: E402
 
 
@@ -24,6 +24,21 @@ class MaskSecretTests(unittest.TestCase):
         masked = mask_secret("hf_abcdefghijklmnop")
         self.assertNotIn("abcdefghijklmnop", masked)
         self.assertTrue(masked.startswith("hf_a"))
+
+
+class RedisUrlTests(unittest.TestCase):
+    def test_ignores_unresolved_railway_template_and_builds_from_parts(self):
+        settings = Settings(
+            redis_url="redis://${{REDISUSER}}:${{REDIS_PASSWORD}}@${{REDISHOST}}:${{REDISPORT}}",
+            redis_host="redis.railway.internal",
+            redis_port=6379,
+            redis_user="default",
+            redis_password="secret",
+        )
+        self.assertEqual(
+            settings.resolved_redis_url,
+            "redis://default:secret@redis.railway.internal:6379/0",
+        )
 
 
 class StripThinkingTests(unittest.TestCase):
