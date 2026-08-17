@@ -1,10 +1,10 @@
-"""Chat via local Ollama (deepseek-r1, thinking off), then Hugging Face fallback."""
+"""Chat via selected provider, then fallback: Ollama, Hugging Face, Groq."""
 
 from __future__ import annotations
 
 import logging
 import re
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 from huggingface_hub import InferenceClient
@@ -15,9 +15,14 @@ logger = logging.getLogger(__name__)
 
 THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
 
+ProviderName = Literal["ollama", "huggingface", "groq"]
+PROVIDERS: tuple[ProviderName, ...] = ("ollama", "huggingface", "groq")
+DEFAULT_ORDER: tuple[ProviderName, ...] = PROVIDERS
+_ALIASES = {"hf": "huggingface", "hugging_face": "huggingface"}
+
 
 class LLMError(RuntimeError):
-    """Both Ollama and Hugging Face failed, or no provider could run."""
+    """All configured providers failed, or no provider could run."""
 
 
 def strip_thinking(text: str) -> str:
@@ -25,6 +30,22 @@ def strip_thinking(text: str) -> str:
         return ""
     cleaned = THINK_BLOCK_RE.sub("", text)
     return cleaned.strip()
+
+
+def normalize_provider(provider: str | None) -> ProviderName:
+    if not provider or not str(provider).strip():
+        return "ollama"
+    name = str(provider).strip().lower()
+    name = _ALIASES.get(name, name)
+    if name not in PROVIDERS:
+        raise LLMError(
+            f"Unknown provider '{provider}'. Use ollama, huggingface, or groq."
+        )
+    return name  # type: ignore[return-value]
+
+
+def provider_route(preferred: ProviderName) -> list[ProviderName]:
+    return [preferred] + [p for p in DEFAULT_ORDER if p != preferred]
 
 
 def _hf_chat_content(response: Any) -> str:
@@ -46,6 +67,24 @@ def _hf_chat_content(response: Any) -> str:
             msg = choices[0].get("message") or {}
             return strip_thinking(msg.get("content") or "")
     return strip_thinking(str(response))
+
+
+def _skip_reason(
+    name: ProviderName, *, groq_api_key: str | None = None
+) -> str | None:
+    settings = get_settings()
+    if name == "huggingface" and not settings.hf_configured:
+        return "HF_TOKEN is not configured"
+    if name == "groq" and not _resolve_groq_key(groq_api_key):
+        return "GROQ_API_KEY is not configured"
+    return None
+
+
+def _resolve_groq_key(groq_api_key: str | None) -> str:
+    override = (groq_api_key or "").strip()
+    if override:
+        return override
+    return get_settings().groq_api_key.strip()
 
 
 def _ollama_chat(
@@ -87,10 +126,7 @@ def _huggingface_chat(
     settings = get_settings()
     token = settings.hf_token.strip()
     if not token:
-        raise LLMError(
-            "Ollama failed and HF_TOKEN is not configured. "
-            "Start Ollama with deepseek-r1, or set HF_TOKEN for fallback."
-        )
+        raise LLMError("HF_TOKEN is not configured.")
     api = InferenceClient(token=token)
     response = api.chat_completion(
         messages=messages,
@@ -104,28 +140,73 @@ def _huggingface_chat(
     return content
 
 
+def _groq_chat(
+    messages: list[dict[str, str]],
+    *,
+    temperature: float,
+    max_tokens: int,
+    groq_api_key: str | None = None,
+) -> str:
+    settings = get_settings()
+    key = _resolve_groq_key(groq_api_key)
+    if not key:
+        raise LLMError("GROQ_API_KEY is not configured.")
+    url = settings.groq_base_url.rstrip("/") + "/chat/completions"
+    payload = {
+        "model": settings.groq_model,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+    }
+    with httpx.Client(timeout=settings.ollama_timeout_seconds) as client:
+        response = client.post(url, json=payload, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+    content = _hf_chat_content(data)
+    if not content.strip():
+        raise LLMError("Groq returned empty content.")
+    return content
+
+
 def chat(
     messages: list[dict[str, str]],
     *,
     temperature: float = 0.2,
     max_tokens: int = 2048,
+    provider: str | None = None,
+    groq_api_key: str | None = None,
 ) -> tuple[str, str]:
-    """Return (content, provider) where provider is 'ollama' or 'huggingface'."""
-    try:
-        return _ollama_chat(messages, temperature=temperature, max_tokens=max_tokens), "ollama"
-    except Exception as exc:
-        logger.warning("Ollama chat failed, trying Hugging Face: %s", exc)
+    """Return (content, provider). Tries selected provider, then the rest."""
+    preferred = normalize_provider(provider)
+    handlers = {
+        "ollama": _ollama_chat,
+        "huggingface": _huggingface_chat,
+        "groq": _groq_chat,
+    }
+    errors: list[str] = []
+    for name in provider_route(preferred):
+        skip = _skip_reason(name, groq_api_key=groq_api_key)
+        if skip:
+            errors.append(f"{name}: {skip}")
+            continue
+        try:
+            kwargs: dict[str, Any] = {
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+            if name == "groq":
+                kwargs["groq_api_key"] = groq_api_key
+            content = handlers[name](messages, **kwargs)
+            return content, name
+        except Exception as exc:
+            logger.warning("%s chat failed: %s", name, exc)
+            errors.append(f"{name}: {exc}")
 
-    try:
-        return _huggingface_chat(
-            messages, temperature=temperature, max_tokens=max_tokens
-        ), "huggingface"
-    except LLMError:
-        raise
-    except Exception as exc:
-        raise LLMError(
-            f"Ollama failed and Hugging Face fallback also failed: {exc}"
-        ) from exc
+    raise LLMError("All providers failed: " + "; ".join(errors))
 
 
 def ollama_reachable() -> bool:
@@ -137,3 +218,27 @@ def ollama_reachable() -> bool:
             return response.status_code < 500
     except Exception:
         return False
+
+
+def providers_status() -> list[dict[str, Any]]:
+    settings = get_settings()
+    return [
+        {
+            "id": "ollama",
+            "label": "Ollama",
+            "available": ollama_reachable(),
+            "model": settings.ollama_model,
+        },
+        {
+            "id": "huggingface",
+            "label": "Hugging Face",
+            "available": settings.hf_configured,
+            "model": settings.hf_chat_model,
+        },
+        {
+            "id": "groq",
+            "label": "Groq",
+            "available": settings.groq_configured,
+            "model": settings.groq_model,
+        },
+    ]

@@ -176,14 +176,16 @@ def get_styled_translations_from_ai(
     from_lang: str = DEFAULT_GRAMMAR_FROM,
     to_lang: str = DEFAULT_GRAMMAR_TO,
     context=None,
+    provider: str | None = None,
+    groq_api_key: str | None = None,
 ) -> dict:
     src_hint = from_lang if from_lang in TARGET_LANGUAGES else DEFAULT_GRAMMAR_FROM
     tgt = to_lang if to_lang in TARGET_LANGUAGES else DEFAULT_GRAMMAR_TO
     wants_translation = src_hint != tgt
-    provider = "ollama"
+    used_provider = "ollama"
 
     def _once(retry_feedback=None):
-        nonlocal provider
+        nonlocal used_provider
         system_prompt, user_template = build_styled_translation_prompt(
             src_hint=src_hint,
             tgt=tgt,
@@ -192,13 +194,15 @@ def get_styled_translations_from_ai(
             retry_feedback=retry_feedback,
         )
         user_msg = user_template.replace("{text}", text)
-        content, provider = chat(
+        content, used_provider = chat(
             [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_msg},
             ],
             temperature=0.15,
             max_tokens=3000,
+            provider=provider,
+            groq_api_key=groq_api_key,
         )
         raw = json.loads(extract_json(content))
         parsed = parse_styled_translation_response(
@@ -207,7 +211,7 @@ def get_styled_translations_from_ai(
             tgt=tgt,
             wants_translation=wants_translation,
         )
-        parsed["provider"] = provider
+        parsed["provider"] = used_provider
         return parsed
 
     try:
@@ -222,7 +226,7 @@ def get_styled_translations_from_ai(
                     "/ 'it'll be ready', and for pickup use 'come pick it up' / 'come by to collect it'."
                 )
             )
-        result["provider"] = provider
+        result["provider"] = used_provider
         return result
     except LLMError as e:
         return {"error": str(e)}

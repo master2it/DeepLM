@@ -19,6 +19,7 @@ import {
   postGrammar,
   type GrammarResult,
   type LanguagesPayload,
+  type ProviderId,
 } from "@/lib/api";
 
 const STYLE_KEYS = [
@@ -27,7 +28,13 @@ const STYLE_KEYS = [
   { key: "everyday_neutral" as const, label: "Everyday / Neutral" },
 ];
 
-export function GrammarFixer() {
+export function GrammarFixer({
+  provider,
+  groqApiKey,
+}: {
+  provider: ProviderId;
+  groqApiKey: string;
+}) {
   const [meta, setMeta] = useState<LanguagesPayload | null>(null);
   const [text, setText] = useState("");
   const [fromLang, setFromLang] = useState("Persian");
@@ -61,6 +68,8 @@ export function GrammarFixer() {
         text: text.trim(),
         from_lang: fromLang,
         to_lang: toLang,
+        provider,
+        groq_api_key: groqApiKey,
       });
       setResult(data);
     } catch (err) {

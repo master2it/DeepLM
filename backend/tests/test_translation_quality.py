@@ -122,7 +122,7 @@ class MockedPipelineTests(unittest.TestCase):
         }
         responses = [json.dumps(bad_json), json.dumps(good_json)]
 
-        def fake_chat(messages, temperature=0.2, max_tokens=2048):
+        def fake_chat(messages, temperature=0.2, max_tokens=2048, provider=None, groq_api_key=None):
             return responses.pop(0), "ollama"
 
         with patch.object(grammar, "chat", side_effect=fake_chat):

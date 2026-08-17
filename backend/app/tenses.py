@@ -8,7 +8,9 @@ from app.jsonutil import extract_json
 from app.llm import LLMError, chat
 
 
-def get_tenses_from_ai(text: str) -> dict | list:
+def get_tenses_from_ai(
+    text: str, provider: str | None = None, groq_api_key: str | None = None
+) -> dict | list:
     system_prompt = """
     You are an expert English teacher. The user will give you a short text.
     1. Identify subject and BASE VERB.
@@ -29,6 +31,8 @@ def get_tenses_from_ai(text: str) -> dict | list:
             ],
             temperature=0.1,
             max_tokens=2500,
+            provider=provider,
+            groq_api_key=groq_api_key,
         )
         data = json.loads(extract_json(content))
         if isinstance(data, list):
@@ -42,7 +46,9 @@ def get_tenses_from_ai(text: str) -> dict | list:
         return {"error": str(e)}
 
 
-def get_tense_explanation_from_ai(tense_name: str) -> dict:
+def get_tense_explanation_from_ai(
+    tense_name: str, provider: str | None = None, groq_api_key: str | None = None
+) -> dict:
     system_prompt = f"""
     You are an expert English teacher explaining grammar to a Persian student.
     Explain the English tense "{tense_name}".
@@ -67,6 +73,8 @@ def get_tense_explanation_from_ai(tense_name: str) -> dict:
             ],
             temperature=0.2,
             max_tokens=1500,
+            provider=provider,
+            groq_api_key=groq_api_key,
         )
         data = json.loads(extract_json(content))
         if isinstance(data, dict):

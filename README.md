@@ -1,11 +1,11 @@
 # DeepLM (FastAPI + Next.js)
 
-Grammar/Spell Fixer and 12 Tenses in the browser. The API tries **local Ollama** (`deepseek-r1`, thinking off) first, then **Hugging Face** if Ollama fails.
+Grammar/Spell Fixer and 12 Tenses in the browser. Pick **Ollama**, **Hugging Face**, or **Groq** in Settings. The API tries that provider first, then falls back: Ollama → Hugging Face → Groq.
 
 ## Prerequisites
 
 - Docker Desktop
-- [Ollama](https://ollama.com) on the host (not in Docker)
+- [Ollama](https://ollama.com) on the host (not in Docker) if you use the local model
 
 ```bash
 ollama pull deepseek-r1
@@ -20,10 +20,11 @@ Ollama must listen on port `11434`.
 copy .env.example .env
 ```
 
-Optional: set `HF_TOKEN` in `.env` so the API can fall back when Ollama is down.
+Optional Hugging Face key on the server. Groq can also be pasted in the Settings tab:
 
 ```env
 HF_TOKEN=hf_your_token_here
+GROQ_API_KEY=gsk_your_key_here
 ```
 
 ## Run with Docker
@@ -69,11 +70,12 @@ python -m unittest tests.test_config tests.test_translation_quality -v
 
 - **Grammar/Spell Fixer** — default tab; Persian → natural American English (B2); three styles
 - **12 Tenses** — conjugate a short English phrase with Persian glosses
+- **Settings** — choose Ollama / Hugging Face / Groq; paste a Groq API key (saved in the browser)
 
 ## LLM routing
 
-1. Ollama `POST /api/chat` with `think: false`
-2. Strip leftover `<think>` blocks
-3. Hugging Face `Qwen/Qwen2.5-72B-Instruct` if Ollama errors
+1. Use the provider selected in Settings
+2. If it fails or is not configured, try the remaining providers in order: Ollama (`think: false`), Hugging Face (`Qwen/Qwen2.5-72B-Instruct`), Groq (`llama-3.3-70b-versatile`)
+3. Strip leftover `<think>` blocks from replies
 
-`HF_TOKEN` is not required at startup. Requests fail only if both providers fail.
+Keys are not required at startup. A request fails only if every provider fails.
