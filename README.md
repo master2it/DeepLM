@@ -31,6 +31,8 @@ GROQ_API_KEY=gsk_your_key_here
 
 App version lives in [`VERSION`](VERSION) and is shown in the UI (`v…`) and on `GET /health`. Each push to `main` runs `.github/workflows/bump-version.yml`, which increments the patch number (for example `1.0.0` → `1.0.1`) and tags `v1.0.1`. Commits that already say `chore: bump version` are skipped so the bot does not loop.
 
+Record every AI-assisted fix in [`CHANGELOG.md`](CHANGELOG.md) and tag it **major**, **minor**, **patch** (bugs), or **release**.
+
 ## Deploy (Railpack)
 
 The repo root is a monorepo. Railpack builds the **FastAPI backend**. Deploy the Next.js app separately (for example Vercel) with `NEXT_PUBLIC_API_URL` pointing at this API.
