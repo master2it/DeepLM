@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +10,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { postTenseExplain, postTenses, type ProviderId, type TenseItem } from "@/lib/api";
+import {
+  fetchLanguages,
+  postTenseExplain,
+  postTenses,
+  readStoredTenseLanguage,
+  writeStoredTenseLanguage,
+  type ProviderId,
+  type TenseItem,
+  type TenseLanguage,
+} from "@/lib/api";
 
 export function TensesGenerator({
   provider,
@@ -21,6 +38,8 @@ export function TensesGenerator({
   provider: ProviderId;
   groqApiKey: string;
 }) {
+  const [languages, setLanguages] = useState<string[]>(["English", "German"]);
+  const [language, setLanguage] = useState<TenseLanguage>("English");
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +50,25 @@ export function TensesGenerator({
   const [infoBody, setInfoBody] = useState("");
   const [infoLoading, setInfoLoading] = useState(false);
 
+  useEffect(() => {
+    setLanguage(readStoredTenseLanguage());
+    fetchLanguages()
+      .then((data) => {
+        if (data.tense_languages?.length) {
+          setLanguages(data.tense_languages);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  function onLanguageChange(next: string) {
+    const lang = next === "German" ? "German" : "English";
+    setLanguage(lang);
+    writeStoredTenseLanguage(lang);
+    setItems([]);
+    setUsedProvider(null);
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!text.trim()) {
@@ -40,7 +78,7 @@ export function TensesGenerator({
     setLoading(true);
     setError(null);
     try {
-      const data = await postTenses(text.trim(), provider, groqApiKey);
+      const data = await postTenses(text.trim(), provider, groqApiKey, language);
       setItems(data.items || []);
       setUsedProvider(data.provider || null);
     } catch (err) {
@@ -57,9 +95,9 @@ export function TensesGenerator({
     setInfoLoading(true);
     setInfoBody("");
     try {
-      const data = await postTenseExplain(tense, provider, groqApiKey);
+      const data = await postTenseExplain(tense, provider, groqApiKey, language);
       const examples = (data.examples || [])
-        .map((ex, i) => `${i + 1}. ${ex.en}\n${ex.fa}`)
+        .map((ex, i) => `${i + 1}. ${ex.text || ex.en || ""}\n${ex.fa}`)
         .join("\n\n");
       setInfoBody(`${data.explanation || ""}\n\n${examples}`.trim());
     } catch (err) {
@@ -69,26 +107,53 @@ export function TensesGenerator({
     }
   }
 
+  const placeholder = language === "German" ? "Ich arbeite" : "I did";
+
   return (
     <div className="space-y-4">
       <form onSubmit={onSubmit} className="space-y-3">
-        <p className="text-sm text-zinc-400">Enter a short English text (e.g. I did):</p>
+        <div className="w-full max-w-xs space-y-1">
+          <Label>Language</Label>
+          <Select value={language} onValueChange={onLanguageChange}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {languages.map((lang) => (
+                <SelectItem key={lang} value={lang}>
+                  {lang}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <p className="text-sm text-zinc-400">
+          {language === "German"
+            ? "Enter a short German (or English) phrase. You get 12 tense cards in German with Persian."
+            : "Enter a short English text. You get 12 English tenses with Persian."}
+        </p>
         <Textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="I did"
+          placeholder={placeholder}
         />
         <Button type="submit" disabled={loading} className="w-full sm:w-auto">
           {loading ? "Generating…" : "Generate 12 Tenses"}
         </Button>
       </form>
       {error && <p className="text-sm text-red-400">{error}</p>}
-      {usedProvider && <Badge>via {usedProvider}</Badge>}
+      {usedProvider && (
+        <Badge>
+          via {usedProvider} · {language}
+        </Badge>
+      )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {items.map((item) => (
           <Card key={item.tense}>
             <CardHeader className="flex-row items-start justify-between space-y-0 gap-2">
-              <CardTitle className="min-w-0 flex-1 break-words pr-2 text-sm sm:text-base">{item.tense}</CardTitle>
+              <CardTitle className="min-w-0 flex-1 break-words pr-2 text-sm sm:text-base">
+                {item.tense}
+              </CardTitle>
               <Button
                 type="button"
                 variant="ghost"
@@ -100,7 +165,9 @@ export function TensesGenerator({
               </Button>
             </CardHeader>
             <CardContent className="space-y-2 overflow-hidden text-sm">
-              <p className="break-words">{item.english}</p>
+              <p className="break-words" dir="ltr">
+                {item.text}
+              </p>
               <p dir="rtl" className="break-words text-zinc-400">
                 {item.persian}
               </p>

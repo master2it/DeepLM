@@ -24,6 +24,8 @@ RTL_TARGETS = {"Persian", "Arabic"}
 DEFAULT_GRAMMAR_FROM = "Persian"
 DEFAULT_GRAMMAR_TO = "English"
 GRAMMAR_LANGUAGES = list(TARGET_LANGUAGES.keys())
+TENSE_LANGUAGES = ["English", "German"]
+DEFAULT_TENSE_LANGUAGE = "English"
 
 STYLE_VARIANTS = (
     ("Friendly / Casual", "friendly_casual"),

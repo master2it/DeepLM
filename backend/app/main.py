@@ -12,9 +12,11 @@ from app.config import get_settings
 from app.constants import (
     DEFAULT_GRAMMAR_FROM,
     DEFAULT_GRAMMAR_TO,
+    DEFAULT_TENSE_LANGUAGE,
     GRAMMAR_LANGUAGES,
     RTL_TARGETS,
     STYLE_VARIANTS,
+    TENSE_LANGUAGES,
 )
 from app.grammar import get_styled_translations_from_ai
 from app.llm import providers_status
@@ -47,12 +49,14 @@ class GrammarRequest(BaseModel):
 
 class TensesRequest(BaseModel):
     text: str = Field(..., min_length=1)
+    language: str = DEFAULT_TENSE_LANGUAGE
     provider: ProviderField | None = None
     groq_api_key: str | None = None
 
 
 class TenseExplainRequest(BaseModel):
     tense: str = Field(..., min_length=1)
+    language: str = DEFAULT_TENSE_LANGUAGE
     provider: ProviderField | None = None
     groq_api_key: str | None = None
 
@@ -88,6 +92,8 @@ def languages():
         "default_from": DEFAULT_GRAMMAR_FROM,
         "default_to": DEFAULT_GRAMMAR_TO,
         "styles": [{"label": label, "key": key} for label, key in STYLE_VARIANTS],
+        "tense_languages": TENSE_LANGUAGES,
+        "default_tense_language": DEFAULT_TENSE_LANGUAGE,
     }
 
 
@@ -109,7 +115,10 @@ def grammar(req: GrammarRequest):
 @app.post("/api/tenses")
 def tenses(req: TensesRequest):
     result = get_tenses_from_ai(
-        req.text.strip(), provider=req.provider, groq_api_key=req.groq_api_key
+        req.text.strip(),
+        language=req.language,
+        provider=req.provider,
+        groq_api_key=req.groq_api_key,
     )
     if isinstance(result, dict) and result.get("error"):
         raise HTTPException(status_code=502, detail=result["error"])
@@ -119,7 +128,10 @@ def tenses(req: TensesRequest):
 @app.post("/api/tenses/explain")
 def tenses_explain(req: TenseExplainRequest):
     result = get_tense_explanation_from_ai(
-        req.tense.strip(), provider=req.provider, groq_api_key=req.groq_api_key
+        req.tense.strip(),
+        language=req.language,
+        provider=req.provider,
+        groq_api_key=req.groq_api_key,
     )
     if isinstance(result, dict) and result.get("error"):
         raise HTTPException(status_code=502, detail=result["error"])

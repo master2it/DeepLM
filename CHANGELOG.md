@@ -28,9 +28,20 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+---
+
+## [1.1.0] — 2026-08-17 — minor
+
+### 2026-08-17 — 12 tenses language selector (English / German)
+- **Type:** minor
+- **Version:** 1.1.0
+- **Summary:** 12 Tenses tab lets the user pick English or German. German uses the same 12-tense chart mapped to Präsens/Perfekt/Präteritum/Plusquamperfekt/Futur, with Persian glosses. Info dialog explains the selected language.
+- **Why:** feature
+- **Files:** `backend/app/tenses.py`, `backend/app/main.py`, `frontend/src/components/tenses-generator.tsx`, `frontend/src/lib/api.ts`
+
 ### 2026-08-17 — AI changelog process
 - **Type:** patch
-- **Version:** Unreleased
+- **Version:** 1.1.0
 - **Summary:** Added this changelog so each AI fix is recorded with a major/minor/patch/release class.
 - **Why:** process
 - **Files:** `CHANGELOG.md`, `README.md`
