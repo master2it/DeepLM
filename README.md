@@ -27,7 +27,21 @@ HF_TOKEN=hf_your_token_here
 GROQ_API_KEY=gsk_your_key_here
 ```
 
-## Run with Docker
+## Deploy (Railpack)
+
+The repo root is a monorepo. Railpack builds the **FastAPI backend**. Deploy the Next.js app separately (for example Vercel) with `NEXT_PUBLIC_API_URL` pointing at this API.
+
+Set these on the host:
+
+```env
+PORT=8000
+CORS_ORIGINS=https://your-frontend.vercel.app,http://localhost:3000
+HF_TOKEN=
+GROQ_API_KEY=
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+```
+
+`railpack.json` starts `uvicorn` from `backend/`. Do not set the service root directory to `frontend/`, and do not set a custom `start.sh` unless that file exists.
 
 ```bash
 docker compose up --build
