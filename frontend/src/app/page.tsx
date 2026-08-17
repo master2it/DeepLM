@@ -96,10 +96,6 @@ export default function HomePage() {
           />
         </TabsContent>
       </Tabs>
-      <p className="text-xs text-zinc-500">
-        App v{APP_VERSION}
-        {health?.version ? ` · API v${health.version}` : ""}
-      </p>
     </main>
   );
 }
