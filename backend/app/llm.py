@@ -1,4 +1,4 @@
-"""Chat via selected provider, then fallback: Ollama, Hugging Face, Groq."""
+"""Chat via the selected provider. Fallback only when none is specified."""
 
 from __future__ import annotations
 
@@ -44,7 +44,11 @@ def normalize_provider(provider: str | None) -> ProviderName:
     return name  # type: ignore[return-value]
 
 
-def provider_route(preferred: ProviderName) -> list[ProviderName]:
+def provider_route(
+    preferred: ProviderName, *, exclusive: bool = False
+) -> list[ProviderName]:
+    if exclusive:
+        return [preferred]
     return [preferred] + [p for p in DEFAULT_ORDER if p != preferred]
 
 
@@ -180,7 +184,8 @@ def chat(
     provider: str | None = None,
     groq_api_key: str | None = None,
 ) -> tuple[str, str]:
-    """Return (content, provider). Tries selected provider, then the rest."""
+    """Return (content, provider). Explicit Settings choice is exclusive."""
+    exclusive = bool(provider and str(provider).strip())
     preferred = normalize_provider(provider)
     handlers = {
         "ollama": _ollama_chat,
@@ -188,7 +193,7 @@ def chat(
         "groq": _groq_chat,
     }
     errors: list[str] = []
-    for name in provider_route(preferred):
+    for name in provider_route(preferred, exclusive=exclusive):
         skip = _skip_reason(name, groq_api_key=groq_api_key)
         if skip:
             errors.append(f"{name}: {skip}")
@@ -206,7 +211,8 @@ def chat(
             logger.warning("%s chat failed: %s", name, exc)
             errors.append(f"{name}: {exc}")
 
-    raise LLMError("All providers failed: " + "; ".join(errors))
+    prefix = "Provider failed: " if exclusive else "All providers failed: "
+    raise LLMError(prefix + "; ".join(errors))
 
 
 def ollama_reachable() -> bool:

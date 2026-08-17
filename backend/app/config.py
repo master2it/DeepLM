@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     hf_token: str = ""
     hf_chat_model: str = "Qwen/Qwen2.5-72B-Instruct"
     groq_api_key: str = ""
-    groq_model: str = "llama-3.3-70b-versatile"
+    groq_model: str = "openai/gpt-oss-120b"
     groq_base_url: str = "https://api.groq.com/openai/v1"
     cors_origins: str = (
         "http://localhost:3000,http://127.0.0.1:3000,"

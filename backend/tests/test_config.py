@@ -42,6 +42,7 @@ class RouteTests(unittest.TestCase):
             provider_route("groq"),
             ["groq", "ollama", "huggingface"],
         )
+        self.assertEqual(provider_route("groq", exclusive=True), ["groq"])
 
 
 class FallbackTests(unittest.TestCase):
@@ -95,17 +96,39 @@ class FallbackTests(unittest.TestCase):
         self.assertEqual(provider, "huggingface")
         groq.assert_not_called()
 
-    def test_selected_fails_then_fallback(self):
+    def test_selected_fails_does_not_fallback(self):
         with patch("app.llm._skip_reason", return_value=None):
             with patch("app.llm._huggingface_chat", side_effect=RuntimeError("hf down")):
-                with patch("app.llm._ollama_chat", return_value="hello from ollama"):
+                with patch("app.llm._ollama_chat") as ollama:
                     with patch("app.llm._groq_chat") as groq:
-                        content, provider = chat(
-                            [{"role": "user", "content": "hi"}],
-                            provider="huggingface",
-                        )
-        self.assertEqual(content, "hello from ollama")
-        self.assertEqual(provider, "ollama")
+                        with self.assertRaises(LLMError) as ctx:
+                            chat(
+                                [{"role": "user", "content": "hi"}],
+                                provider="huggingface",
+                            )
+        self.assertIn("huggingface", str(ctx.exception).lower())
+        ollama.assert_not_called()
+        groq.assert_not_called()
+
+    def test_selected_groq_does_not_use_huggingface(self):
+        with patch(
+            "app.llm._skip_reason",
+            side_effect=lambda name, groq_api_key=None: (
+                "GROQ_API_KEY is not configured" if name == "groq" else None
+            ),
+        ):
+            with patch("app.llm._huggingface_chat") as hf:
+                with patch("app.llm._ollama_chat") as ollama:
+                    with patch("app.llm._groq_chat") as groq:
+                        with self.assertRaises(LLMError) as ctx:
+                            chat(
+                                [{"role": "user", "content": "hi"}],
+                                provider="groq",
+                            )
+        self.assertIn("groq", str(ctx.exception).lower())
+        self.assertNotIn("huggingface", str(ctx.exception).lower())
+        hf.assert_not_called()
+        ollama.assert_not_called()
         groq.assert_not_called()
 
     def test_all_fail_raises(self):

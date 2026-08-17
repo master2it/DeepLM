@@ -28,6 +28,20 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+### 2026-08-17 — Groq model openai/gpt-oss-120b
+- **Type:** patch
+- **Version:** Unreleased
+- **Summary:** Default Groq model is now `openai/gpt-oss-120b` (was `llama-3.3-70b-versatile`).
+- **Why:** feature
+- **Files:** `backend/app/config.py`, `.env.example`, `docker-compose.yml`
+
+### 2026-08-17 — Honor selected LLM provider
+- **Type:** patch
+- **Version:** Unreleased
+- **Summary:** Grammar, tenses, and explain use only the Settings provider. Switching to Groq no longer falls back to Hugging Face if Groq is skipped or fails.
+- **Why:** bug
+- **Files:** `backend/app/llm.py`, `frontend/src/components/settings-panel.tsx`
+
 ### 2026-08-17 — Sync pnpm lockfile for Serwist
 - **Type:** patch
 - **Version:** Unreleased

@@ -46,8 +46,8 @@ export function SettingsPanel({
   return (
     <div className="space-y-4">
       <p className="text-sm text-zinc-400">
-        Prefer this provider first. If it fails, the API tries the others in
-        order: Ollama, then Hugging Face, then Groq.
+        Grammar, tenses, and explanations all use this provider only. They
+        will not fall back to Hugging Face or another backend if you pick Groq.
       </p>
       <fieldset className="space-y-3">
         <legend className="sr-only">LLM provider</legend>
