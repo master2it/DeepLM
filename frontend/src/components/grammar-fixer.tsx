@@ -36,6 +36,7 @@ import {
 } from "@/lib/search-history";
 
 const STYLE_KEYS = [
+  { key: "grammarFix" as const, label: "Grammar Fix" },
   { key: "native" as const, label: "Native" },
   { key: "friendly" as const, label: "Friendly / Casual" },
   { key: "professional" as const, label: "Professional" },
@@ -160,7 +161,7 @@ export function GrammarFixer({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <p className="text-sm text-zinc-400">
-        Understands what you mean, then Native, Friendly / Casual, and Professional in{" "}
+        Understands what you mean, then Grammar Fix, Native, Friendly / Casual, and Professional in{" "}
         {toLocale}.
         {(fromLang === "German" && toLang === "Persian") ||
         (fromLang === "Persian" && toLang === "German")

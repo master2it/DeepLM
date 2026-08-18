@@ -28,79 +28,100 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+---
+
+## [1.5.0] — 2026-08-18 — minor
+
+### 2026-08-18 — Natural collocations for Native / Friendly / Professional
+- **Type:** patch
+- **Version:** 1.5.0
+- **Summary:** Native, Friendly, and Professional prefer common native chunks when they fit; Grammar Fix still only corrects real errors. Cache schema 16.
+- **Why:** feature
+- **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`, `backend/tests/test_translation_quality.py`
+
+### 2026-08-18 — Grammar Fix as a fourth source output
+- **Type:** minor
+- **Version:** 1.5.0
+- **Summary:** Adds Grammar Fix — minimum grammar/spelling correction of the original, then translation of that correction. Native / Friendly / Professional remain independent rewrites. Cache schema 15.
+- **Why:** feature
+- **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`, `backend/tests/test_translation_quality.py`, `frontend/src/components/grammar-fixer.tsx`, `frontend/src/lib/api.ts`
+
+### 2026-08-18 — Tone calibration: everyday casual, modern professional
+- **Type:** patch
+- **Version:** 1.5.0
+- **Summary:** Friendly / Casual is natural everyday speech (low slang, no forced wanna/gotta/no worries). Professional is modern coworker English, not formal. Cache schema 14 drops old slang-heavy / overly formal results.
+- **Why:** bug
+- **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`, `backend/tests/test_translation_quality.py`
+
 ### 2026-08-18 — Independent source rewrite per tone
 - **Type:** patch
-- **Version:** Unreleased
+- **Version:** 1.5.0
 - **Summary:** Native, Friendly, and Professional each get their own source-language rewrite; translation runs on that rewrite. Parser no longer copies Native.from onto the other tones.
 - **Why:** bug
 - **Files:** `backend/app/grammar.py`, `backend/app/constants.py`, `backend/app/cache.py`, `backend/tests/test_translation_quality.py`, `frontend/src/components/grammar-fixer.tsx`, `frontend/src/lib/api.ts`
 
 ### 2026-08-18 — Native / Casual / Professional must differ
 - **Type:** patch
-- **Version:** Unreleased
+- **Version:** 1.5.0
 - **Summary:** Prompt requires three distinct communication goals; near-identical Native/Friendly/Professional results are retried once.
 - **Why:** bug
 - **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`
 
 ### 2026-08-18 — Fix grammar.py SyntaxError on boot
 - **Type:** patch
-- **Version:** Unreleased
+- **Version:** 1.5.0
 - **Summary:** Unescaped quotes in an f-string crashed uvicorn (`'(' was never closed`). The translation prompt block is a plain if/else now.
 - **Why:** bug
 - **Files:** `backend/app/grammar.py`
 
 ### 2026-08-18 — Locale selector + structured grammar notes
 - **Type:** minor
-- **Version:** Unreleased
+- **Version:** 1.5.0
 - **Summary:** Target locale is separate from language (US/UK/DE/MX, …). Prompt is meaning-first and locale-aware. Grammar notes are structured original/correction/explanation.
 - **Why:** feature
 - **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/main.py`, `backend/app/cache.py`, `frontend/src/components/grammar-fixer.tsx`, `frontend/src/lib/api.ts`
 
 ### 2026-08-18 — Meaning-first native rewrite + grammar notes
 - **Type:** minor
-- **Version:** Unreleased
+- **Version:** 1.5.0
 - **Summary:** Translate infers intended meaning, rewrites as a native speaker would, and returns Native, Friendly / Casual, Professional, plus short Grammar Notes.
 - **Why:** feature
 - **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`, `frontend/src/components/grammar-fixer.tsx`
 
 ### 2026-08-18 — Native editor: Native / Friendly / Professional / Literal
 - **Type:** minor
-- **Version:** Unreleased
+- **Version:** 1.5.0
 - **Summary:** Translate uses a native-localization prompt and returns Native, Friendly, Professional, and Literal only (silent grammar; no notes).
 - **Why:** feature
 - **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`, `frontend/src/components/grammar-fixer.tsx`, `frontend/src/lib/api.ts`
 
 ### 2026-08-18 — Corrected sentence stays in From language
 - **Type:** patch
-- **Version:** Unreleased
+- **Version:** 1.5.0
 - **Summary:** Corrected sentence is the grammar-enhanced From text. Style cards show that enhanced input, then the translation. Styles change the To text only.
 - **Why:** feature
 - **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`, `frontend/src/components/grammar-fixer.tsx`
 
 ### 2026-08-18 — Groq/HF speed labels
 - **Type:** patch
-- **Version:** Unreleased
+- **Version:** 1.5.0
 - **Summary:** Groq cards are labeled Suggested · fast; Hugging Face is Slower · better text.
 - **Why:** feature
 - **Files:** `frontend/src/components/settings-panel.tsx`, `frontend/src/components/limits-panel.tsx`, `frontend/src/app/page.tsx`
 
 ### 2026-08-18 — Intent-aware native rewrite (not grammar-only)
 - **Type:** minor
-- **Version:** Unreleased
+- **Version:** 1.5.0
 - **Summary:** Translate infers what you meant, returns a recommended native best version, and rewrites with target-language best practices instead of grammar-only patches.
 - **Why:** feature
 - **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`, `frontend/src/components/grammar-fixer.tsx`, `frontend/src/lib/api.ts`
 
 ### 2026-08-18 — Corrected sentence + numbered styles + grammar notes
 - **Type:** patch
-- **Version:** Unreleased
+- **Version:** 1.5.0
 - **Summary:** Translate results follow Corrected sentence, then 1 Friendly / 2 Professional / 3 Everyday, then Grammar notes in `"wrong" → "right"` form.
 - **Why:** feature
 - **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`, `frontend/src/components/grammar-fixer.tsx`
-
----
-
-## [1.5.0] — 2026-08-18 — minor
 
 ### 2026-08-18 — Hugging Face Inference Providers for Qwen 72B
 - **Type:** patch

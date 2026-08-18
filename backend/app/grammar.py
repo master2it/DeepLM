@@ -8,6 +8,8 @@ from app.constants import (
     DEFAULT_GRAMMAR_FROM,
     DEFAULT_GRAMMAR_TO,
     GERMAN_PERSIAN_RULES,
+    GRAMMAR_FIX_RULES,
+    COLLOCATION_CHUNK_RULES,
     LEGACY_STYLE_KEYS,
     SEMANTIC_ACCURACY_RULES,
     STRUCTURE_FORMAT_RULES,
@@ -126,16 +128,18 @@ def _dup_feedback(native: str, friendly: str, professional: str, *, kind: str) -
     if _near_duplicate(native, friendly):
         return (
             f"HARD RULE FAILED: Native and Friendly/Casual {layer} are identical or nearly "
-            "identical. Independently rewrite Friendly/Casual from the ORIGINAL input "
-            "(Slack/WhatsApp: shorter, contractions). Do NOT copy Native.from. "
-            "Then translate each source rewrite separately. Keep the same meaning."
+            "identical. Independently rewrite Friendly/Casual from the ORIGINAL input as "
+            "medium-casual everyday speech (low slang; do not force wanna/gotta/no worries). "
+            "Do NOT copy Native.from. Then translate each source rewrite separately. "
+            "Keep the same meaning."
         )
     if _near_duplicate(native, professional):
         return (
             f"HARD RULE FAILED: Native and Professional {layer} are identical or nearly "
-            "identical. Independently rewrite Professional from the ORIGINAL input "
-            "(concise workplace phrasing). Do NOT copy Native.from. Then translate each "
-            "source rewrite separately. Keep the same meaning."
+            "identical. Independently rewrite Professional from the ORIGINAL input as "
+            "clear polite coworker English, not formal (no unable to / kindly / prior to). "
+            "Do NOT copy Native.from. Then translate each source rewrite separately. "
+            "Keep the same meaning."
         )
     if _near_duplicate(friendly, professional):
         return (
@@ -233,14 +237,22 @@ def parse_styled_translation_response(
         return {"error": "Unexpected model response."}
 
     detected = (data.get("detected_lang") or src_hint or "").strip() or src_hint
+    grammar_fix = _first_style_pair(data, "grammarFix", "grammar_fix")
     native = _first_style_pair(data, "native", "everyday_neutral")
     friendly = _first_style_pair(data, "friendly", "friendly_casual")
     professional = _first_style_pair(data, "professional", "professional_formal")
     notes, notes_text = _parse_grammar_notes(data)
     canonical = (data.get("canonical_meaning") or "").strip()
-    best_version = (data.get("best_version") or canonical or native.get("from") or "").strip()
+    best_version = (
+        data.get("best_version")
+        or canonical
+        or grammar_fix.get("from")
+        or native.get("from")
+        or ""
+    ).strip()
     if not canonical:
         canonical = best_version
+    grammar_fix = _with_aliases(grammar_fix)
     native = _with_aliases(native)
     friendly = _with_aliases(friendly)
     professional = _with_aliases(professional)
@@ -255,6 +267,7 @@ def parse_styled_translation_response(
         "subject_reading": (data.get("subject_reading") or "").strip(),
         "grammar_notes": notes_text,
         "grammarNotes": notes,
+        "grammarFix": grammar_fix,
         "native": native,
         "friendly": friendly,
         "professional": professional,
@@ -286,21 +299,25 @@ def build_styled_translation_prompt(
 
     if wants_translation:
         translation_block = (
-            f"Pipeline: understand intent, then independently rewrite the ORIGINAL "
-            f"{src_hint} input three times (Native / Friendly / Professional). "
-            f'Each "from" MUST be its own source-language rewrite — never copy Native '
-            f"into Friendly or Professional.\n"
-            f'Then translate EACH "from" separately into {tgt} / {loc} as that tone\'s '
-            '"to". Do not translate one shared sentence three times.\n'
+            f"Pipeline: (1) Grammar Fix the ORIGINAL {src_hint} with minimum edits, "
+            f"then translate THAT corrected text into {tgt} / {loc} as grammarFix.to. "
+            f"Do not translate the uncorrected original for Grammar Fix.\n"
+            f"(2) Independently rewrite the ORIGINAL {src_hint} three times "
+            f"(Native / Friendly / Professional). Each of those \"from\" fields MUST "
+            f"be its own source-language rewrite — never copy Native "
+            f"into Friendly or Professional, and never copy Grammar Fix into the rewrites.\n"
+            f'Then translate EACH rewrite separately into {tgt} / {loc} as that tone\'s '
+            '"to". Do not translate one shared sentence four times.\n'
             "grammar_notes: analyze the ORIGINAL user input only, not the generated versions.\n"
             "Same who/what/when. Keep source layout. Short input → short output."
         )
     else:
         translation_block = (
             f"Stay in {src_hint} / {loc}. "
-            'Put each independent rewrite in "from" and set "to" to empty.\n'
+            'Put Grammar Fix (min-edit correction, or the original if already correct) '
+            'in grammarFix.from. Put each independent rewrite in "from". Set all "to" empty.\n'
             "Native, Friendly, and Professional from fields must each be independently "
-            "generated from the original input. Do not copy Native."
+            "generated from the original input. Do not copy Grammar Fix or Native."
         )
 
     context_block = (
@@ -322,6 +339,12 @@ def build_styled_translation_prompt(
 STYLE DIFFERENTIATION (mandatory):
 {STYLE_DIFFERENTIATION_RULES}
 
+GRAMMAR FIX (mandatory, not a rewrite):
+{GRAMMAR_FIX_RULES}
+
+NATURAL COLLOCATIONS AND CHUNKS (Native / Friendly / Professional only):
+{COLLOCATION_CHUNK_RULES}
+
 SEMANTIC ACCURACY (mandatory):
 {SEMANTIC_ACCURACY_RULES}
 
@@ -339,6 +362,7 @@ Escape every double quote inside string values as \\".
 Use \\n for line breaks inside strings — never a raw newline.
 {{
     "detected_lang": "<detected language name>",
+    "grammarFix": {{"from": "<minimum grammar/spelling correction of the ORIGINAL {src_hint}, or unchanged if already correct>", "to": "<translation of THAT corrected text, or empty>"}},
     "native": {{"from": "<independent Native {src_hint} rewrite>", "to": "<translation of THAT Native rewrite, or empty>"}},
     "friendly": {{"from": "<independent Friendly {src_hint} rewrite>", "to": "<translation of THAT Friendly rewrite, or empty>"}},
     "professional": {{"from": "<independent Professional {src_hint} rewrite>", "to": "<translation of THAT Professional rewrite, or empty>"}},
@@ -351,8 +375,9 @@ Use \\n for line breaks inside strings — never a raw newline.
     if wants_translation:
         user_msg = (
             f"Understand what this {src_hint} means, then express it naturally in {tgt} "
-            f"({loc}). Independently rewrite the original in {src_hint} for Native, "
-            "Friendly / Casual, and Professional, then translate EACH rewrite. "
+            f"({loc}). First Grammar Fix the original (minimum edits), then translate "
+            "that correction. Independently rewrite Native, Friendly / Casual, and "
+            "Professional from the original, then translate EACH rewrite. "
             "Grammar Notes cover the original input only. "
             "Keep the same structure as the source.\n\n"
             "Text:\n{text}"
@@ -360,7 +385,7 @@ Use \\n for line breaks inside strings — never a raw newline.
     else:
         user_msg = (
             f"Understand what this means, then express it naturally in {tgt} ({loc}). "
-            "Return Native, Friendly / Casual, Professional, and Grammar Notes.\n\n"
+            "Return Grammar Fix, Native, Friendly / Casual, Professional, and Grammar Notes.\n\n"
             "Text:\n{text}"
         )
 

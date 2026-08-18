@@ -38,6 +38,7 @@ export type GrammarResult = {
   grammar_notes?: string;
   grammarNotes?: GrammarNote[];
   provider?: string;
+  grammarFix?: StylePair;
   native?: StylePair;
   friendly?: StylePair;
   professional?: StylePair;
