@@ -40,7 +40,7 @@ DeepLM is a small, self-hostable language-learning tool: fix a sentence in sever
 
 | Area | What you get |
 | --- | --- |
-| **Grammar / spell fixer** | Tab **Translate / Grammar/Spell Fixer**. Infers intent, then **Corrected sentence**, numbered styles (Friendly / Formal / Neutral), and **Grammar notes** (`"wrong" → "right"`). Default English → Persian. Max 1000 characters. |
+| **Grammar / spell fixer** | Tab **Translate / Grammar / Spell Fixer**. Infers intent, then **Corrected sentence**, numbered styles (Friendly / Formal / Neutral), and **Grammar notes** (`"wrong" → "right"`). Default English → Persian. Max 1000 characters. |
 | **Tenses** | English: 12 tenses. German: 6 (Präsens, Präteritum, Perfekt, Plusquamperfekt, Futur I, Futur II). Persian gloss on every card. Recent searches stay in this browser. |
 | **Tense explanation** | Per-tense teaching notes and examples (cached in Redis like grammar/tenses). |
 | **Providers** | Default is **Hugging Face**. Groq is optional. **Ollama is disabled** for now (`OLLAMA_ENABLED=false`). A selected provider is exclusive (no silent vendor fallback). |

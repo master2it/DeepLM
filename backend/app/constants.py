@@ -69,19 +69,22 @@ INTENT_AND_PRACTICE_RULES = """
 Intent first, then native rewrite (mandatory):
 - Ask internally: "What was this person trying to communicate?" Put that in intended_meaning
   (plain, one or two sentences, in the output language used for canonical_meaning).
-- best_version / canonical_meaning is the recommended native sentence, not a word-for-word
-  repair of the input. Prefer how natives actually say it.
-- Grammar-only edits are insufficient when the sentence is understandable but unidiomatic
-  (wrong preposition, calque, odd word order, "translate-my-thoughts" English/German/Persian).
+- best_version / canonical_meaning is the grammar-enhanced INPUT in the SOURCE (From) language.
+  Fix grammar, agreement, articles, and unidiomatic source wording. Do NOT translate it.
+  Do NOT restyle it into Friendly / Formal / Neutral — one improved original only.
+- Grammar-only edits are insufficient when the source is understandable but unidiomatic
+  (wrong preposition, calque, odd word order). Improve the source the way a teacher would.
 - Fix: articles, tense choice, aspect, agreement, prepositions, particles, politeness,
   collocations, and typical native alternatives.
 - Examples of the required leap (do this class of rewrite, not these exact strings):
   "I am agree" → "I agree"; "I very like this" → "I like this a lot";
   "make a photo" → "take a photo"; "explain me this" → "explain this to me".
-- "from" = how the source text should have been written correctly in the source language
-  (native/best-practice source, same intent). Never copy the broken input when it is wrong.
-- "to" = best-practice target-language rewrite of that same intent (when translating).
-- Output layout the UI will show: Corrected sentence, then 1 Friendly / 2 Professional / 3 Everyday, then Grammar notes.
+- "from" = the same grammar-enhanced source as best_version (identical on all three styles
+  when translating). Never copy the broken input when it is wrong.
+- "to" = translation of that enhanced source in that style (Friendly / Formal / Neutral).
+  Style changes belong only in "to", not in the source.
+- Output layout: Corrected sentence (From language), then each card shows enhanced From
+  text and the translation below, then Grammar notes.
 """.strip()
 
 GRAMMAR_NOTES_RULES = """

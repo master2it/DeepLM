@@ -91,6 +91,16 @@ def parse_styled_translation_response(
     if not canonical:
         canonical = best_version
     intended = (data.get("intended_meaning") or "").strip()
+    if not canonical:
+        for _label, key in STYLE_VARIANTS:
+            item = data.get(key) or {}
+            if isinstance(item, dict):
+                src = (item.get("from") or "").strip()
+                if src:
+                    canonical = src
+                    if not best_version:
+                        best_version = src
+                    break
     return {
         "from_lang": detected,
         "to_lang": tgt,
@@ -121,23 +131,22 @@ def build_styled_translation_prompt(
 
     translation_block = (
         f"The user asks for {tgt_label} output.\n"
-        f"1) intended_meaning: what they were trying to say (in {tgt}).\n"
-        f"2) best_version and canonical_meaning: the recommended native {tgt_label} sentence(s), "
-        f"same facts AND the same layout as the source (greeting, paragraphs, list items).\n"
-        f'3) For each style, "from" = best-practice {src_hint} (what they should have written);\n'
-        f'   "to" = the SAME intent and the SAME line-break structure as best_version, '
-        f"restyled in {tgt_label} (Friendly/casual, Professional/formal, or Everyday/neutral).\n"
-        f"All three \"to\" texts must preserve identical who/what/when facts as best_version.\n"
-        f"Do not merge a list of works into one consecutive paragraph.\n"
-        f"Do not stop at grammar repair — use native collocations and typical phrasing."
+        f"1) intended_meaning: what they were trying to say (short, in {src_hint} or {tgt}).\n"
+        f"2) best_version and canonical_meaning: grammar-enhanced {src_hint} ONLY "
+        f"(the corrected input). Same facts and layout as the source. Not a translation. "
+        f"Not a Friendly/Formal/Neutral rewrite of the source.\n"
+        f'3) For every style, "from" MUST be identical to best_version.\n'
+        f'   "to" = translate that enhanced {src_hint} into {tgt_label} in that tone '
+        f"(Friendly/casual, Professional/formal, or Everyday/neutral).\n"
+        f"All three \"to\" texts keep the same who/what/when as the enhanced source.\n"
+        f"Do not merge a list of works into one consecutive paragraph."
         if wants_translation
         else (
-            "No target-language translation was requested. Keep rewrites in the source language.\n"
+            "No target-language translation was requested. Stay in the source language.\n"
             "1) intended_meaning: what they were trying to say.\n"
-            "2) best_version and canonical_meaning: the recommended native sentence, same layout "
-            "(greeting, paragraphs, list items on separate lines).\n"
-            '3) Put each styled native rewrite in "from" and set "to" to an empty string.\n'
-            "Styles change tone only; intent and line breaks must match best_version."
+            "2) best_version and canonical_meaning: grammar-enhanced source (one corrected input).\n"
+            '3) Style variants go in "from"; set "to" to an empty string.\n'
+            "Styles change tone only; facts and line breaks must match best_version."
         )
     )
 
@@ -172,16 +181,16 @@ STRUCTURE AND FORMAT (mandatory):
 Pipeline you MUST follow (internally, then output JSON only):
 1. Treat the input as {src_hint} (detect if the UI hint is wrong).
 2. Infer intended_meaning (what they wanted to say), including implicit subjects/objects.
-3. Write best_version / canonical_meaning in {tgt_label if wants_translation else src_hint}
-   as a native would say it — not a grammar-only patch.
-4. Derive all style variants FROM that best version (tone only — no intent drift).
+3. Write best_version / canonical_meaning in {src_hint}: grammar-enhanced input only.
+   Never put {tgt} in best_version when translating.
+4. Copy that same enhanced source into every style "from". Change tone only in "to".
 5. {translation_block}
 {pair_rules}
 {context_block}
 {retry_block}
 Also:
-- "from" must be the source rewritten with best source-language practice, never the raw broken input.
-- best_version is the "Corrected sentence" (clearest native version). Everyday/neutral may be very close to it.
+- "from" must be the grammar-enhanced source (same as best_version when translating).
+- best_version is the "Corrected sentence" in {src_hint}, never in {tgt} when translating.
 - grammar_notes: "original" → "fixed". Reason. One issue per line. Never omit if you changed the text.
 - subject_reading: short note like "implicit inanimate 'it' (will be ready)" or "explicit speaker".
 
@@ -193,21 +202,20 @@ Keep each "from"/"to" value complete; do not truncate JSON.
     "detected_lang": "<detected language name>",
     "subject_reading": "<how you read omitted/explicit subjects>",
     "intended_meaning": "<what they were trying to say>",
-    "best_version": "<recommended native sentence, same layout as source>",
-    "canonical_meaning": "<same as best_version>",
+    "best_version": "<grammar-enhanced SOURCE / From language, same layout>",
+    "canonical_meaning": "<same as best_version, still SOURCE language>",
     "grammar_notes": "<each line: \\"wrong\\" → \\"right\\". Reason.>",
-    "friendly_casual": {{"from": "<corrected casual source>", "to": "<Friendly/casual {tgt} or empty>"}},
-    "professional_formal": {{"from": "<corrected formal source>", "to": "<Professional/formal {tgt} or empty>"}},
-    "everyday_neutral": {{"from": "<corrected neutral source>", "to": "<Everyday/neutral {tgt} or empty>"}}
+    "friendly_casual": {{"from": "<same grammar-enhanced source as best_version>", "to": "<Friendly/casual {tgt} or empty>"}},
+    "professional_formal": {{"from": "<same grammar-enhanced source as best_version>", "to": "<Professional/formal {tgt} or empty>"}},
+    "everyday_neutral": {{"from": "<same grammar-enhanced source as best_version>", "to": "<Everyday/neutral {tgt} or empty>"}}
 }}
 """.strip()
 
     if wants_translation:
         user_msg = (
-            f"Infer what this {src_hint} is trying to say, then rewrite it into natural {tgt_label} "
-            f"using best {tgt} practices (not grammar-only). "
-            f"Give a Corrected sentence (best_version), then 1 Friendly/casual, 2 Professional/formal, "
-            f"and 3 Everyday/neutral in {tgt}. "
+            f"Improve this {src_hint} (grammar-enhanced input only — do not translate best_version). "
+            f"Then translate that enhanced sentence into {tgt_label} as 1 Friendly, 2 Professional, "
+            f"3 Everyday. Keep all three \"from\" fields identical to best_version. "
             "Keep the same structure as the source (greeting, paragraph, then one list item per line). "
             'Always add Grammar notes as \\"wrong\\" → \\"right\\". Reason.\n\n'
             "Text:\n{text}"

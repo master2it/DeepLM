@@ -28,6 +28,13 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+### 2026-08-18 — Corrected sentence stays in From language
+- **Type:** patch
+- **Version:** Unreleased
+- **Summary:** Corrected sentence is the grammar-enhanced From text. Style cards show that enhanced input, then the translation. Styles change the To text only.
+- **Why:** feature
+- **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`, `frontend/src/components/grammar-fixer.tsx`
+
 ### 2026-08-18 — Groq/HF speed labels
 - **Type:** patch
 - **Version:** Unreleased

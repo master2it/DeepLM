@@ -116,7 +116,7 @@ export default function HomePage() {
           <TabsTrigger value="grammar">
             <SpellCheck className="size-5 sm:hidden" aria-hidden />
             <span className="sm:hidden">Translate</span>
-            <span className="hidden sm:inline">Translate / Grammar/Spell Fixer</span>
+            <span className="hidden sm:inline">Translate / Grammar / Spell Fixer</span>
           </TabsTrigger>
           <TabsTrigger value="tenses">
             <BookOpen className="size-5 sm:hidden" aria-hidden />
