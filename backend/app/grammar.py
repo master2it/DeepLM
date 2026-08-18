@@ -70,11 +70,33 @@ def flagged_invented_ready_subject(source_text: str, result: dict) -> bool:
     return any(target_invents_speaker_ready(t) for t in collect_style_to_texts(result))
 
 
-def _style_display_text(pair: dict | None, *, wants_translation: bool) -> str:
+def _with_aliases(pair: dict[str, str]) -> dict[str, str]:
+    src = (pair.get("from") or "").strip()
+    tgt = (pair.get("to") or "").strip()
+    return {
+        "from": src,
+        "to": tgt,
+        "grammarEnhanced": src,
+        "translated": tgt,
+    }
+
+
+def _style_source_text(pair: dict | None) -> str:
     item = pair or {}
-    if wants_translation:
-        return (item.get("to") or item.get("from") or "").strip()
-    return (item.get("from") or item.get("to") or "").strip()
+    return (
+        item.get("from")
+        or item.get("grammarEnhanced")
+        or ""
+    ).strip()
+
+
+def _style_translated_text(pair: dict | None) -> str:
+    item = pair or {}
+    return (
+        item.get("to")
+        or item.get("translated")
+        or ""
+    ).strip()
 
 
 def _norm_style(text: str) -> str:
@@ -97,50 +119,59 @@ def _near_duplicate(a: str, b: str) -> bool:
     return overlap >= 0.9 and shorter / longer >= 0.85
 
 
-def styles_too_similar_feedback(result: dict, *, wants_translation: bool) -> str | None:
-    native = _norm_style(
-        _style_display_text(result.get("native"), wants_translation=wants_translation)
-    )
-    friendly = _norm_style(
-        _style_display_text(result.get("friendly"), wants_translation=wants_translation)
-    )
-    professional = _norm_style(
-        _style_display_text(
-            result.get("professional"), wants_translation=wants_translation
-        )
-    )
+def _dup_feedback(native: str, friendly: str, professional: str, *, kind: str) -> str | None:
     if max(len(native), len(friendly), len(professional)) < 24:
         return None
+    layer = "source-language rewrite (from / grammarEnhanced)" if kind == "source" else "translation (to)"
     if _near_duplicate(native, friendly):
         return (
-            "HARD RULE FAILED: Native and Friendly/Casual are identical or nearly "
-            "identical. Rewrite Friendly/Casual so it is clearly more conversational "
-            "(Slack/WhatsApp: shorter, contractions, spoken phrasing). Do NOT copy Native. "
-            "Keep the same meaning and facts. Professional must stay workplace-appropriate."
+            f"HARD RULE FAILED: Native and Friendly/Casual {layer} are identical or nearly "
+            "identical. Independently rewrite Friendly/Casual from the ORIGINAL input "
+            "(Slack/WhatsApp: shorter, contractions). Do NOT copy Native.from. "
+            "Then translate each source rewrite separately. Keep the same meaning."
         )
     if _near_duplicate(native, professional):
         return (
-            "HARD RULE FAILED: Native and Professional are identical or nearly "
-            "identical. Rewrite Professional by restructuring for the workplace "
-            "(concise, polite, direct). Do NOT only swap synonyms. Keep the same meaning."
+            f"HARD RULE FAILED: Native and Professional {layer} are identical or nearly "
+            "identical. Independently rewrite Professional from the ORIGINAL input "
+            "(concise workplace phrasing). Do NOT copy Native.from. Then translate each "
+            "source rewrite separately. Keep the same meaning."
         )
     if _near_duplicate(friendly, professional):
         return (
-            "HARD RULE FAILED: Friendly/Casual and Professional are nearly identical. "
-            "Make Friendly more spoken and Professional more workplace. Same meaning."
+            f"HARD RULE FAILED: Friendly/Casual and Professional {layer} are nearly identical. "
+            "Rewrite each from the ORIGINAL input independently, then translate each. Same meaning."
         )
     return None
 
 
+def styles_too_similar_feedback(result: dict, *, wants_translation: bool) -> str | None:
+    native_src = _norm_style(_style_source_text(result.get("native")))
+    friendly_src = _norm_style(_style_source_text(result.get("friendly")))
+    professional_src = _norm_style(_style_source_text(result.get("professional")))
+    source_issue = _dup_feedback(
+        native_src, friendly_src, professional_src, kind="source"
+    )
+    if source_issue:
+        return source_issue
+    if not wants_translation:
+        return None
+    return _dup_feedback(
+        _norm_style(_style_translated_text(result.get("native"))),
+        _norm_style(_style_translated_text(result.get("friendly"))),
+        _norm_style(_style_translated_text(result.get("professional"))),
+        kind="translated",
+    )
+
+
 def _style_pair(item) -> dict[str, str]:
     if isinstance(item, str):
-        return {"from": item.strip(), "to": ""}
+        return _with_aliases({"from": item.strip(), "to": ""})
     if not isinstance(item, dict):
-        return {"from": "", "to": ""}
-    return {
-        "from": (item.get("from") or "").strip(),
-        "to": (item.get("to") or "").strip(),
-    }
+        return _with_aliases({"from": "", "to": ""})
+    src = (item.get("from") or item.get("grammarEnhanced") or "").strip()
+    tgt = (item.get("to") or item.get("translated") or "").strip()
+    return _with_aliases({"from": src, "to": tgt})
 
 
 def _first_style_pair(data: dict, *keys: str) -> dict[str, str]:
@@ -149,7 +180,7 @@ def _first_style_pair(data: dict, *keys: str) -> dict[str, str]:
             pair = _style_pair(data.get(key))
             if pair["from"] or pair["to"]:
                 return pair
-    return {"from": "", "to": ""}
+    return _with_aliases({"from": "", "to": ""})
 
 
 def _parse_grammar_notes(raw) -> tuple[list[dict[str, str]], str]:
@@ -210,13 +241,9 @@ def parse_styled_translation_response(
     best_version = (data.get("best_version") or canonical or native.get("from") or "").strip()
     if not canonical:
         canonical = best_version
-    if wants_translation:
-        if not native["from"]:
-            native["from"] = best_version
-        if not friendly["from"]:
-            friendly["from"] = native["from"] or best_version
-        if not professional["from"]:
-            professional["from"] = native["from"] or best_version
+    native = _with_aliases(native)
+    friendly = _with_aliases(friendly)
+    professional = _with_aliases(professional)
     return {
         "from_lang": detected,
         "to_lang": tgt,
@@ -259,20 +286,21 @@ def build_styled_translation_prompt(
 
     if wants_translation:
         translation_block = (
-            f"Express the intended meaning in {tgt} / {loc}.\n"
-            f'"from" = natural rewrite of the input in {src_hint} '
-            "(same enhanced source on all three).\n"
-            f'"to" = Native / Friendly / Professional in {tgt} ({loc}). '
-            "They MUST be different communication styles, not word swaps.\n"
-            "grammar_notes: JSON array of original/correction/explanation.\n"
+            f"Pipeline: understand intent, then independently rewrite the ORIGINAL "
+            f"{src_hint} input three times (Native / Friendly / Professional). "
+            f'Each "from" MUST be its own source-language rewrite — never copy Native '
+            f"into Friendly or Professional.\n"
+            f'Then translate EACH "from" separately into {tgt} / {loc} as that tone\'s '
+            '"to". Do not translate one shared sentence three times.\n'
+            "grammar_notes: analyze the ORIGINAL user input only, not the generated versions.\n"
             "Same who/what/when. Keep source layout. Short input → short output."
         )
     else:
         translation_block = (
             f"Stay in {src_hint} / {loc}. "
-            'Put each version in "from" and set "to" to empty.\n'
-            "Native preserves original tone; Friendly is clearly more conversational; "
-            "Professional is clearly more workplace. Do not copy Native."
+            'Put each independent rewrite in "from" and set "to" to empty.\n'
+            "Native, Friendly, and Professional from fields must each be independently "
+            "generated from the original input. Do not copy Native."
         )
 
     context_block = (
@@ -311,9 +339,9 @@ Escape every double quote inside string values as \\".
 Use \\n for line breaks inside strings — never a raw newline.
 {{
     "detected_lang": "<detected language name>",
-    "native": {{"from": "<enhanced source>", "to": "<Native {tgt} or empty>"}},
-    "friendly": {{"from": "<same enhanced source>", "to": "<Friendly / Casual {tgt} or empty>"}},
-    "professional": {{"from": "<same enhanced source>", "to": "<Professional {tgt} or empty>"}},
+    "native": {{"from": "<independent Native {src_hint} rewrite>", "to": "<translation of THAT Native rewrite, or empty>"}},
+    "friendly": {{"from": "<independent Friendly {src_hint} rewrite>", "to": "<translation of THAT Friendly rewrite, or empty>"}},
+    "professional": {{"from": "<independent Professional {src_hint} rewrite>", "to": "<translation of THAT Professional rewrite, or empty>"}},
     "grammar_notes": [
         {{"original": "<wrong fragment>", "correction": "<natural fix>", "explanation": "<why>"}}
     ]
@@ -323,7 +351,9 @@ Use \\n for line breaks inside strings — never a raw newline.
     if wants_translation:
         user_msg = (
             f"Understand what this {src_hint} means, then express it naturally in {tgt} "
-            f"({loc}). Return Native, Friendly / Casual, Professional, and Grammar Notes. "
+            f"({loc}). Independently rewrite the original in {src_hint} for Native, "
+            "Friendly / Casual, and Professional, then translate EACH rewrite. "
+            "Grammar Notes cover the original input only. "
             "Keep the same structure as the source.\n\n"
             "Text:\n{text}"
         )

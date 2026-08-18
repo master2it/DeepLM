@@ -94,7 +94,7 @@ class PromptArchitectureTests(unittest.TestCase):
             wants_translation=True,
         )
         self.assertIn("German ↔ Persian", de_fa)
-        self.assertIn("natural contemporary Persian", de_fa)
+        self.assertIn("natural contemporary phrasing", de_fa)
         self.assertIn("German", user_de)
         self.assertIn("Persian", user_de)
 
@@ -104,7 +104,7 @@ class PromptArchitectureTests(unittest.TestCase):
             wants_translation=True,
         )
         self.assertIn("German ↔ Persian", fa_de)
-        self.assertIn("natural contemporary German", fa_de)
+        self.assertIn("natural contemporary phrasing", fa_de)
         self.assertIn("es wird fertig", fa_de)
         self.assertIn("Persian", user_fa)
         self.assertIn("German", user_fa)
@@ -173,6 +173,23 @@ class PromptArchitectureTests(unittest.TestCase):
         self.assertIn("do NOT auto-casualize", system)
         self.assertIn("Do NOT simply copy Native", system)
         self.assertIn("HARD RULE", system)
+        self.assertIn("independent Native", system)
+        self.assertIn("ORIGINAL user input", system)
+        self.assertNotIn("same enhanced source", system)
+
+        translating, user = grammar.build_styled_translation_prompt(
+            src_hint="English",
+            tgt="Persian",
+            wants_translation=True,
+            locale="Iranian Persian",
+        )
+        self.assertNotIn("same enhanced source", translating)
+        self.assertIn("independently rewrite the ORIGINAL", translating)
+        self.assertIn("never copy Native", translating)
+        self.assertIn("translate EACH", translating)
+        self.assertIn("independent Friendly", translating)
+        self.assertIn("independent Professional", translating)
+        self.assertIn("Independently rewrite the original", user)
 
 
 class ParseContractTests(unittest.TestCase):
@@ -263,6 +280,25 @@ class StyleDifferentiationTests(unittest.TestCase):
             grammar.styles_too_similar_feedback(result, wants_translation=False)
         )
 
+    def test_flags_identical_source_even_when_translations_differ(self):
+        shared = (
+            "Hey, I wanted to ask if you could send me the file today? "
+            "I need to look it over before our meeting tomorrow."
+        )
+        result = {
+            "native": {"from": shared, "to": "نسخه طبیعی فارسی متفاوت."},
+            "friendly": {"from": shared, "to": "نسخه خودمونی کاملا جدا."},
+            "professional": {
+                "from": "Could you please send me the file today? I need to review it before tomorrow's meeting.",
+                "to": "نسخه اداری جداگانه.",
+            },
+        }
+        feedback = grammar.styles_too_similar_feedback(
+            result, wants_translation=True
+        )
+        self.assertIsNotNone(feedback)
+        self.assertIn("from / grammarEnhanced", feedback)
+
     def test_best_version_falls_back_to_canonical(self):
         raw = {
             "detected_lang": "English",
@@ -278,6 +314,81 @@ class StyleDifferentiationTests(unittest.TestCase):
         self.assertEqual(parsed["best_version"], "I agree with you.")
         self.assertEqual(parsed["canonical_meaning"], "I agree with you.")
         self.assertEqual(parsed["native"]["from"], "I agree with you.")
+
+    def test_parse_does_not_copy_native_from_onto_other_tones(self):
+        raw = {
+            "detected_lang": "English",
+            "native": {
+                "from": "Hey, could you send me the file today?",
+                "to": "سلام، می‌تونی فایل رو امروز بفرستی؟",
+            },
+            "friendly": {
+                "from": "Hey, can you send me the file today? No worries if not.",
+                "to": "هی، می‌تونی امروز فایل رو بفرستی؟ نگران نباش اگر نشد.",
+            },
+            "professional": {
+                "from": "Could you please send me the file today?",
+                "to": "لطفاً فایل را امروز برایم بفرستید.",
+            },
+            "grammarNotes": [
+                {
+                    "original": "if you can send",
+                    "correction": "if you could send",
+                    "explanation": "more natural for a polite request.",
+                }
+            ],
+        }
+        parsed = grammar.parse_styled_translation_response(
+            raw, src_hint="English", tgt="Persian", wants_translation=True
+        )
+        self.assertNotEqual(parsed["native"]["from"], parsed["friendly"]["from"])
+        self.assertNotEqual(parsed["native"]["from"], parsed["professional"]["from"])
+        self.assertNotEqual(parsed["friendly"]["from"], parsed["professional"]["from"])
+        self.assertEqual(parsed["native"]["grammarEnhanced"], parsed["native"]["from"])
+        self.assertEqual(parsed["friendly"]["translated"], parsed["friendly"]["to"])
+        self.assertEqual(parsed["grammarNotes"][0]["original"], "if you can send")
+
+    def test_parse_does_not_fill_missing_from_from_native(self):
+        raw = {
+            "detected_lang": "English",
+            "native": {"from": "Could you send the file today?", "to": "a"},
+            "friendly": {"from": "", "to": "b"},
+            "professional": {"from": "", "to": "c"},
+        }
+        parsed = grammar.parse_styled_translation_response(
+            raw, src_hint="English", tgt="Persian", wants_translation=True
+        )
+        self.assertEqual(parsed["native"]["from"], "Could you send the file today?")
+        self.assertEqual(parsed["friendly"]["from"], "")
+        self.assertEqual(parsed["professional"]["from"], "")
+
+    def test_parse_reads_grammarEnhanced_translated_keys(self):
+        raw = {
+            "detected_lang": "English",
+            "native": {
+                "grammarEnhanced": "Could you send the file today?",
+                "translated": "native-fa",
+            },
+            "friendly": {
+                "grammarEnhanced": "Hey, can you send the file today?",
+                "translated": "friendly-fa",
+            },
+            "professional": {
+                "grammarEnhanced": "Please send the file today.",
+                "translated": "professional-fa",
+            },
+        }
+        parsed = grammar.parse_styled_translation_response(
+            raw, src_hint="English", tgt="Persian", wants_translation=True
+        )
+        self.assertEqual(parsed["native"]["from"], "Could you send the file today?")
+        self.assertEqual(parsed["friendly"]["from"], "Hey, can you send the file today?")
+        self.assertEqual(parsed["professional"]["from"], "Please send the file today.")
+        self.assertEqual(parsed["native"]["to"], "native-fa")
+        self.assertEqual(parsed["friendly"]["to"], "friendly-fa")
+        self.assertEqual(parsed["professional"]["to"], "professional-fa")
+        self.assertEqual(parsed["native"]["grammarEnhanced"], parsed["native"]["from"])
+        self.assertEqual(parsed["friendly"]["translated"], "friendly-fa")
 
 
 class MockedPipelineTests(unittest.TestCase):
@@ -325,6 +436,51 @@ class MockedPipelineTests(unittest.TestCase):
         )
         self.assertIn("pick it up", result["friendly"]["to"].lower())
         self.assertEqual(result["provider"], "ollama")
+
+    def test_preserves_independent_source_rewrites(self):
+        payload = {
+            "detected_lang": "English",
+            "native": {
+                "from": "Hey, I wanted to ask if you could send me the file today?",
+                "to": "native-fa",
+            },
+            "friendly": {
+                "from": "Hey, can you send me the file today? I wanna look it over.",
+                "to": "friendly-fa",
+            },
+            "professional": {
+                "from": "Could you please send me the file today? I need to review it.",
+                "to": "professional-fa",
+            },
+            "grammarNotes": [
+                {
+                    "original": "if you can send",
+                    "correction": "if you could send",
+                    "explanation": "more natural for a polite request.",
+                }
+            ],
+        }
+
+        def fake_chat(*_args, **_kwargs):
+            return json.dumps(payload), "groq"
+
+        with patch.object(grammar, "chat", side_effect=fake_chat):
+            result = grammar.get_styled_translations_from_ai(
+                "Hey, I wanted to ask if you can send me the file today",
+                from_lang="English",
+                to_lang="Persian",
+            )
+
+        self.assertNotIn("error", result)
+        self.assertEqual(result["native"]["from"], payload["native"]["from"])
+        self.assertEqual(result["friendly"]["from"], payload["friendly"]["from"])
+        self.assertEqual(result["professional"]["from"], payload["professional"]["from"])
+        self.assertEqual(result["native"]["to"], "native-fa")
+        self.assertEqual(result["friendly"]["to"], "friendly-fa")
+        self.assertEqual(result["professional"]["to"], "professional-fa")
+        self.assertNotEqual(result["native"]["from"], result["friendly"]["from"])
+        self.assertNotEqual(result["native"]["from"], result["professional"]["from"])
+        self.assertEqual(result["grammarNotes"][0]["original"], "if you can send")
 
     def test_semantic_expectations_documented_cases(self):
         cases = [

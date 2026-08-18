@@ -20,6 +20,7 @@ import {
   type GrammarResult,
   type LanguagesPayload,
   type ProviderId,
+  type StylePair,
   MAX_INPUT_CHARS,
 } from "@/lib/api";
 import {
@@ -54,12 +55,17 @@ function defaultLocaleFor(meta: LanguagesPayload | null, lang: string): string {
 function stylePair(
   result: GrammarResult,
   key: (typeof STYLE_KEYS)[number]["key"]
-): { from: string; to: string } {
+): StylePair {
   const direct = result[key];
-  if (direct?.from || direct?.to) return direct;
-  if (key === "native") {
-    return result.everyday_neutral || { from: result.best_version || "", to: "" };
+  if (
+    direct?.from ||
+    direct?.to ||
+    direct?.grammarEnhanced ||
+    direct?.translated
+  ) {
+    return direct;
   }
+  if (key === "native") return result.everyday_neutral || { from: "", to: "" };
   if (key === "friendly") return result.friendly_casual || { from: "", to: "" };
   if (key === "professional") {
     return result.professional_formal || { from: "", to: "" };
@@ -271,10 +277,11 @@ export function GrammarFixer({
           {result.provider && <Badge>via {result.provider}</Badge>}
           {STYLE_KEYS.map(({ key, label }) => {
             const pair = stylePair(result, key);
-            const enhanced = pair.from || result.best_version || "";
+            const enhanced = pair.grammarEnhanced || pair.from || "";
+            const translated = pair.translated || pair.to || "";
             const version = result.wants_translation
-              ? pair.to || pair.from
-              : pair.from || pair.to;
+              ? translated
+              : enhanced || translated;
             return (
               <Card key={key}>
                 <CardHeader>

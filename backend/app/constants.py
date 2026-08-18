@@ -225,6 +225,12 @@ If Native and Friendly/Casual are too similar, rewrite Friendly/Casual.
 If Native and Professional are too similar, rewrite Professional.
 Do NOT change the meaning just to make them different.
 Tone differentiation is REQUIRED. Meaning preservation is REQUIRED too.
+
+Independent source rewrites (mandatory):
+Do NOT write one grammar-enhanced source sentence and then translate it three times.
+For each tone, rewrite the ORIGINAL user input independently in the source language.
+Then translate THAT rewrite. native.from, friendly.from, and professional.from must
+each be independently generated. grammar_notes analyze the ORIGINAL input only.
 """.strip()
 
 GERMAN_PERSIAN_RULES = """

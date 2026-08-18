@@ -13,7 +13,12 @@ export const HF_KEY_STORAGE_KEY = "deeplm.hf_api_key";
 export const CLIENT_ID_STORAGE_KEY = "deeplm.client_id";
 export const TENSE_LANG_STORAGE_KEY = "deeplm.tense_language";
 
-export type StylePair = { from: string; to: string };
+export type StylePair = {
+  from: string;
+  to: string;
+  grammarEnhanced?: string;
+  translated?: string;
+};
 
 export type GrammarNote = {
   original: string;
