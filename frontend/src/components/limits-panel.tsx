@@ -78,14 +78,27 @@ export function LimitsPanel({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchLimits(ownHf, ownGroq)
-      .then((payload) => {
-        setData(payload);
-        setError(null);
-      })
-      .catch((e) =>
-        setError(e instanceof Error ? e.message : "Failed to load limits")
-      );
+    let cancelled = false;
+    function load() {
+      fetchLimits(ownHf, ownGroq)
+        .then((payload) => {
+          if (!cancelled) {
+            setData(payload);
+            setError(null);
+          }
+        })
+        .catch((e) => {
+          if (!cancelled) {
+            setError(e instanceof Error ? e.message : "Failed to load limits");
+          }
+        });
+    }
+    load();
+    window.addEventListener("focus", load);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", load);
+    };
   }, [ownHf, ownGroq]);
 
   const resets = data?.resets_at

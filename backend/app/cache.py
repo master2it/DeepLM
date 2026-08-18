@@ -1,4 +1,4 @@
-"""JSON cache for grammar and tenses. Redis is optional; misses fall through."""
+"""JSON cache for grammar, tenses, and tense explanations. Redis is optional."""
 
 from __future__ import annotations
 
@@ -110,14 +110,26 @@ def cache_set(key: str, value: dict) -> None:
         logger.warning("Redis set failed: %s", exc)
 
 
+def get_cached(kind: str, parts: dict[str, Any]) -> dict | None:
+    hit = cache_get(make_cache_key(kind, parts))
+    if hit is None:
+        return None
+    hit["cached"] = True
+    return hit
+
+
+def save_cached(kind: str, parts: dict[str, Any], result: dict) -> None:
+    if result.get("error"):
+        return
+    cache_set(make_cache_key(kind, parts), result)
+
+
 def cached_result(kind: str, parts: dict[str, Any], producer):
     """Return cached dict or call producer(). Never stores Groq keys or errors."""
-    key = make_cache_key(kind, parts)
-    hit = cache_get(key)
+    hit = get_cached(kind, parts)
     if hit is not None:
-        hit["cached"] = True
         return hit
     result = producer()
-    if isinstance(result, dict) and not result.get("error"):
-        cache_set(key, result)
+    if isinstance(result, dict):
+        save_cached(kind, parts, result)
     return result

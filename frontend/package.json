@@ -1,5 +1,37 @@
 {
   "name": "deeplm-web",
+  "description": "DeepLM Language Model Web Interface",
+  "homepage": "https://github.com/master2it/DeepLM",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/master2it/DeepLM.git"
+  },
+  "author": "Master2iT",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/master2it/DeepLM/issues"
+  },
+  "keywords": [
+    "DeepLM",
+    "Translation",
+    "Language Model",
+    "Web Interface",
+    "Grammar",
+    "Spell Checker",
+    "Tenses",
+    "Verb Conjugation",
+    "Noun Conjugation",
+    "Adjective Conjugation",
+    "Adverb Conjugation",
+    "Preposition Conjugation",
+    "Article Conjugation"
+  ],
+  "contributors": [
+    {
+      "name": "Master2iT",
+      "url": "https://github.com/master2it"
+    }
+  ],
   "version": "1.5.0",
   "private": true,
   "scripts": {

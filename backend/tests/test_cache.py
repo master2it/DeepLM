@@ -25,6 +25,23 @@ class CacheKeyTests(unittest.TestCase):
         b = make_cache_key("tenses", {"text": "I work", "language": "English", "provider": "huggingface"})
         self.assertNotEqual(a, b)
 
+    def test_explain_key_uses_tense_and_language(self):
+        a = make_cache_key(
+            "tenses_explain",
+            {"tense": "Present Simple", "language": "English", "provider": "groq"},
+        )
+        b = make_cache_key(
+            "tenses_explain",
+            {"tense": "Present Perfect", "language": "English", "provider": "groq"},
+        )
+        c = make_cache_key(
+            "tenses_explain",
+            {"tense": "Present Simple", "language": "German", "provider": "groq"},
+        )
+        self.assertTrue(a.startswith("deeplm:tenses_explain:"))
+        self.assertNotEqual(a, b)
+        self.assertNotEqual(a, c)
+
     def test_does_not_embed_groq_key(self):
         key = make_cache_key(
             "grammar",

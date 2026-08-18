@@ -180,6 +180,7 @@ export async function fetchLimits(
     own_groq_key: ownGroqKey ? "true" : "false",
   });
   const res = await fetch(`${API_BASE}/api/limits?${params}`, {
+    cache: "no-store",
     headers: apiHeaders(),
   });
   if (!res.ok) throw new Error(await parseError(res));

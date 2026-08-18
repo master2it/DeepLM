@@ -28,6 +28,27 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+### 2026-08-18 — Professional open-source README
+- **Type:** patch
+- **Version:** Unreleased
+- **Summary:** README rewritten for public contributors: demo links, screenshots, architecture, setup, API, deploy, contributing, and license.
+- **Why:** docs
+- **Files:** `README.md`, `frontend/public/image-1.jpg`, `frontend/public/image-2.jpg`, `frontend/public/image-3.jpg`
+
+### 2026-08-18 — Cache tense explanations
+- **Type:** patch
+- **Version:** Unreleased
+- **Summary:** Tense explanations are stored in Redis like grammar and tenses. Repeat explain requests return the cache and do not count against the daily limit.
+- **Why:** feature
+- **Files:** `backend/app/main.py`, `backend/app/cache.py`, `backend/tests/test_cache.py`, `README.md`
+
+### 2026-08-18 — Fix default-key quota consume
+- **Type:** patch
+- **Version:** Unreleased
+- **Summary:** Default HF/Groq daily counts increment with separate Redis commands (cluster-safe). Cache hits return stored results without counting against the 30/day limit.
+- **Why:** bug
+- **Files:** `backend/app/main.py`, `backend/app/quota.py`, `backend/app/cache.py`, `frontend/src/lib/api.ts`, `frontend/src/components/limits-panel.tsx`
+
 ---
 
 ## [1.5.0] — 2026-08-18 — minor

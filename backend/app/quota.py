@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
@@ -9,6 +10,8 @@ from fastapi import HTTPException, Request
 
 from app.cache import get_redis, redis_reachable
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 CLIENT_ID_HEADER = "X-Client-Id"
 QuotaKind = Literal["hf", "groq"]
@@ -142,17 +145,21 @@ def assert_can_generate(request: Request, kind: QuotaKind) -> None:
         )
 
 
+def _incr_with_ttl(client, key: str, ttl: int) -> None:
+    # Separate commands (not MULTI/EXEC): clustered Redis rejects pipelines
+    # that touch two keys in different slots, which silently dropped quotas.
+    client.incr(key)
+    client.expire(key, ttl)
+
+
 def consume(request: Request, kind: QuotaKind) -> None:
     client = get_redis()
     if client is None:
+        logger.warning("Quota consume skipped: Redis unavailable")
         return
     ip_key, cid_key, ttl = _quota_keys(request, kind)
     try:
-        pipe = client.pipeline()
-        pipe.incr(ip_key)
-        pipe.expire(ip_key, ttl)
-        pipe.incr(cid_key)
-        pipe.expire(cid_key, ttl)
-        pipe.execute()
-    except Exception:
-        return
+        _incr_with_ttl(client, ip_key, ttl)
+        _incr_with_ttl(client, cid_key, ttl)
+    except Exception as exc:
+        logger.warning("Quota consume failed: %s", exc)

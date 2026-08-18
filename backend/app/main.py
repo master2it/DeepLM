@@ -6,6 +6,7 @@ from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app.config import get_settings
@@ -20,7 +21,7 @@ from app.constants import (
     TENSE_COUNTS,
     TENSE_LANGUAGES,
 )
-from app.cache import cached_result, redis_reachable
+from app.cache import get_cached, redis_reachable, save_cached
 from app.changelog import load_changelog
 from app.grammar import get_styled_translations_from_ai
 from app.llm import providers_status
@@ -132,15 +133,20 @@ def _run_generation(
     producer,
 ):
     quota_kind = default_quota_kind(provider, hf_api_key, groq_api_key)
+    if kind and parts is not None:
+        hit = get_cached(kind, parts)
+        if hit is not None:
+            return hit
     if quota_kind:
         assert_can_generate(http_request, quota_kind)
-    if kind and parts is not None:
-        result = cached_result(kind, parts, producer)
-    else:
-        result = producer()
+    result = producer()
     if isinstance(result, dict) and result.get("error"):
         raise HTTPException(status_code=502, detail=result["error"])
-    if quota_kind and not (isinstance(result, dict) and result.get("cached")):
+    if isinstance(result, dict):
+        result.pop("cached", None)
+    if kind and parts is not None and isinstance(result, dict):
+        save_cached(kind, parts, result)
+    if quota_kind:
         consume(http_request, quota_kind)
     return result
 
@@ -151,8 +157,9 @@ def api_limits(
     own_hf_key: bool = False,
     own_groq_key: bool = False,
 ):
-    return snapshot(
-        request, own_hf_key=own_hf_key, own_groq_key=own_groq_key
+    return JSONResponse(
+        snapshot(request, own_hf_key=own_hf_key, own_groq_key=own_groq_key),
+        headers={"Cache-Control": "no-store"},
     )
 
 
@@ -213,8 +220,12 @@ def tenses_explain(req: TenseExplainRequest, request: Request):
         req.provider,
         req.hf_api_key,
         req.groq_api_key,
-        kind=None,
-        parts=None,
+        kind="tenses_explain",
+        parts={
+            "tense": req.tense.strip(),
+            "language": req.language,
+            "provider": req.provider or "",
+        },
         producer=lambda: get_tense_explanation_from_ai(
             req.tense.strip(),
             language=req.language,
