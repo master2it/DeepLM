@@ -263,6 +263,7 @@ export async function postGrammar(body: {
     headers: apiHeaders(true),
     body: JSON.stringify({
       ...body,
+      text: body.text.trim().toLowerCase(),
       groq_api_key: body.groq_api_key?.trim() || undefined,
       hf_api_key: body.hf_api_key?.trim() || undefined,
     }),
@@ -286,7 +287,7 @@ export async function postTenses(
     method: "POST",
     headers: apiHeaders(true),
     body: JSON.stringify({
-      text,
+      text: text.trim().toLowerCase(),
       language,
       provider,
       groq_api_key: groqApiKey?.trim() || undefined,

@@ -32,6 +32,20 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [1.5.0] — 2026-08-18 — minor
 
+### 2026-08-18 — HF server limit is 50 even if env says 30
+- **Type:** patch
+- **Version:** 1.5.0
+- **Summary:** Shared HF daily cap is at least 50. A leftover HF_DEFAULT_DAILY_LIMIT=30 on Railway no longer keeps the UI and 429s at 30.
+- **Why:** bug
+- **Files:** `backend/app/quota.py`, `backend/app/main.py`, `railway.toml`, `docker-compose.yml`
+
+### 2026-08-18 — Lowercase user text for cache
+- **Type:** patch
+- **Version:** 1.5.0
+- **Summary:** Grammar and Tenses inputs are lowercased before cache and generation so mobile Capitalize does not miss Redis and spend another daily token.
+- **Why:** bug
+- **Files:** `backend/app/cache.py`, `backend/app/main.py`, `frontend/src/lib/api.ts`, `backend/tests/test_cache.py`
+
 ### 2026-08-18 — Preserve source layout in Translate
 - **Type:** patch
 - **Version:** 1.5.0

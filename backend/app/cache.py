@@ -11,13 +11,18 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-CACHE_SCHEMA = 3
+CACHE_SCHEMA = 4
 _client = None
 _client_failed = False
 
 
+def fold_user_text(value: str) -> str:
+    """Lowercase user input so mobile Capitalize does not miss cache / quota."""
+    return (value or "").strip().lower()
+
+
 def _normalize_text(value: str) -> str:
-    return " ".join((value or "").strip().split())
+    return " ".join(fold_user_text(value).split())
 
 
 def make_cache_key(kind: str, parts: dict[str, Any]) -> str:

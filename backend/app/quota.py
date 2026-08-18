@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 CLIENT_ID_HEADER = "X-Client-Id"
 QuotaKind = Literal["hf", "groq"]
+HF_SERVER_DAILY_FLOOR = 50
+GROQ_SERVER_DAILY_DEFAULT = 30
 
 _LABELS = {"hf": "Hugging Face", "groq": "Groq"}
 
@@ -69,8 +71,13 @@ def client_id(request: Request) -> str:
 def _daily_limit(kind: QuotaKind) -> int:
     settings = get_settings()
     if kind == "groq":
-        return int(getattr(settings, "groq_default_daily_limit", 30) or 30)
-    return int(settings.hf_default_daily_limit or 50)
+        return int(
+            getattr(settings, "groq_default_daily_limit", GROQ_SERVER_DAILY_DEFAULT)
+            or GROQ_SERVER_DAILY_DEFAULT
+        )
+    # Ignore leftover HF_DEFAULT_DAILY_LIMIT=30 on Railway; floor is 50.
+    configured = int(settings.hf_default_daily_limit or HF_SERVER_DAILY_FLOOR)
+    return max(HF_SERVER_DAILY_FLOOR, configured)
 
 
 def _quota_keys(request: Request, kind: QuotaKind) -> tuple[str, str, int]:

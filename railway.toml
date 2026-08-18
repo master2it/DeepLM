@@ -12,6 +12,8 @@ restartPolicyType = "ON_FAILURE"
 
 [variables]
 REDIS_TTL_SECONDS = "43200"
+HF_DEFAULT_DAILY_LIMIT = "50"
+GROQ_DEFAULT_DAILY_LIMIT = "30"
 
 [environments.local.variables]
 REDIS_URL = "redis://127.0.0.1:6379/0"

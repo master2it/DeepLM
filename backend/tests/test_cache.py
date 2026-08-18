@@ -20,6 +20,11 @@ class CacheKeyTests(unittest.TestCase):
         self.assertEqual(a, b)
         self.assertTrue(a.startswith("deeplm:grammar:"))
 
+    def test_case_does_not_change_key(self):
+        a = make_cache_key("grammar", {"text": "Hi, Yesterday", "from_lang": "English", "to_lang": "Persian", "provider": "groq"})
+        b = make_cache_key("grammar", {"text": "hi, yesterday", "from_lang": "English", "to_lang": "Persian", "provider": "groq"})
+        self.assertEqual(a, b)
+
     def test_provider_changes_key(self):
         a = make_cache_key("tenses", {"text": "I work", "language": "English", "provider": "groq"})
         b = make_cache_key("tenses", {"text": "I work", "language": "English", "provider": "huggingface"})

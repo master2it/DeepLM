@@ -26,6 +26,7 @@ services:
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-deepseek-r1}
       HF_TOKEN: ${HF_TOKEN:-}
+      HF_DEFAULT_DAILY_LIMIT: ${HF_DEFAULT_DAILY_LIMIT:-50}
       HF_CHAT_MODEL: ${HF_CHAT_MODEL:-Qwen/Qwen2.5-72B-Instruct}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}

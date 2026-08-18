@@ -22,7 +22,7 @@ from app.constants import (
     TENSE_COUNTS,
     TENSE_LANGUAGES,
 )
-from app.cache import get_cached, redis_reachable, save_cached
+from app.cache import fold_user_text, get_cached, redis_reachable, save_cached
 from app.changelog import load_changelog
 from app.grammar import get_styled_translations_from_ai
 from app.llm import providers_status
@@ -31,6 +31,7 @@ from app.quota import (
     consume,
     default_quota_kind,
     snapshot,
+    _daily_limit,
 )
 from app.tenses import get_tense_explanation_from_ai, get_tenses_from_ai
 from app.version import APP_VERSION
@@ -92,8 +93,8 @@ def health():
         "hf_model": by_id["huggingface"]["model"],
         "groq_model": by_id["groq"]["model"],
         "providers": providers,
-        "hf_default_daily_limit": get_settings().hf_default_daily_limit,
-        "groq_default_daily_limit": get_settings().groq_default_daily_limit,
+        "hf_default_daily_limit": _daily_limit("hf"),
+        "groq_default_daily_limit": _daily_limit("groq"),
         "redis": redis_reachable(),
     }
 
@@ -169,6 +170,7 @@ def api_limits(
 
 @app.post("/api/grammar")
 def grammar(req: GrammarRequest, request: Request):
+    text = fold_user_text(req.text)
     return _run_generation(
         request,
         req.provider,
@@ -176,14 +178,14 @@ def grammar(req: GrammarRequest, request: Request):
         req.groq_api_key,
         kind="grammar",
         parts={
-            "text": req.text.strip(),
+            "text": text,
             "from_lang": req.from_lang,
             "to_lang": req.to_lang,
             "context": req.context or "",
             "provider": req.provider or "",
         },
         producer=lambda: get_styled_translations_from_ai(
-            req.text.strip(),
+            text,
             from_lang=req.from_lang,
             to_lang=req.to_lang,
             context=req.context,
@@ -196,6 +198,7 @@ def grammar(req: GrammarRequest, request: Request):
 
 @app.post("/api/tenses")
 def tenses(req: TensesRequest, request: Request):
+    text = fold_user_text(req.text)
     return _run_generation(
         request,
         req.provider,
@@ -203,12 +206,12 @@ def tenses(req: TensesRequest, request: Request):
         req.groq_api_key,
         kind="tenses",
         parts={
-            "text": req.text.strip(),
+            "text": text,
             "language": req.language,
             "provider": req.provider or "",
         },
         producer=lambda: get_tenses_from_ai(
-            req.text.strip(),
+            text,
             language=req.language,
             provider=req.provider,
             groq_api_key=req.groq_api_key,
