@@ -28,6 +28,13 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+### 2026-08-18 — Fix grammar.py SyntaxError on boot
+- **Type:** patch
+- **Version:** Unreleased
+- **Summary:** Unescaped quotes in an f-string crashed uvicorn (`'(' was never closed`). The translation prompt block is a plain if/else now.
+- **Why:** bug
+- **Files:** `backend/app/grammar.py`
+
 ### 2026-08-18 — Locale selector + structured grammar notes
 - **Type:** minor
 - **Version:** Unreleased

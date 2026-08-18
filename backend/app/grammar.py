@@ -194,18 +194,23 @@ def build_styled_translation_prompt(
     german_persian = pair == {"German", "Persian"}
     pair_rules = f"\n{GERMAN_PERSIAN_RULES}\n" if german_persian else ""
 
-    translation_block = (
-        f"Express the intended meaning in {tgt} / {loc}.\n"
-        f'"from" = natural rewrite of the input in {src_hint} (same enhanced source on all three).\n'
-        f'"to" = Native / Friendly / Professional in {tgt} ({loc}). They must not be clones.\n'
-        f"grammar_notes: JSON array of original/correction/explanation.\n"
-        f"Same who/what/when. Keep source layout. Short input → short output."
-        if wants_translation
-        else (
-            f"Stay in {src_hint} / {loc}. Put each version in \\"from\\" and set \\"to\\" to empty.\n"
-            "Native preserves tone; Friendly is more relaxed; Professional is workplace-human."
+    if wants_translation:
+        translation_block = (
+            f"Express the intended meaning in {tgt} / {loc}.\n"
+            f'"from" = natural rewrite of the input in {src_hint} '
+            "(same enhanced source on all three).\n"
+            f'"to" = Native / Friendly / Professional in {tgt} ({loc}). '
+            "They must not be clones.\n"
+            "grammar_notes: JSON array of original/correction/explanation.\n"
+            "Same who/what/when. Keep source layout. Short input → short output."
         )
-    )
+    else:
+        translation_block = (
+            f"Stay in {src_hint} / {loc}. "
+            'Put each version in "from" and set "to" to empty.\n'
+            "Native preserves tone; Friendly is more relaxed; "
+            "Professional is workplace-human."
+        )
 
     context_block = (
         f"Surrounding conversation/context (use it to infer intended meaning):\n{context}\n"
