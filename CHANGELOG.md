@@ -28,23 +28,34 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+---
+
+## [1.5.0] — 2026-08-18 — minor
+
+### 2026-08-18 — Provider badge colors
+- **Type:** patch
+- **Version:** 1.5.0
+- **Summary:** Header provider tags use green for ready and red for offline / not set.
+- **Why:** copy
+- **Files:** `frontend/src/app/page.tsx`
+
 ### 2026-08-18 — Prefer Railway REDIS_PRIVATE_URL
 - **Type:** patch
-- **Version:** Unreleased
+- **Version:** 1.5.0
 - **Summary:** Redis connection prefers REDIS_PRIVATE_URL (Railway private network) over REDIS_URL.
 - **Why:** deploy
 - **Files:** `backend/app/config.py`, `railway.toml`
 
 ### 2026-08-18 — Groq default-key daily limit
 - **Type:** minor
-- **Version:** Unreleased
+- **Version:** 1.5.0
 - **Summary:** Empty Groq key in Settings uses server GROQ_API_KEY with a 30/day cap (browser id + IP, Redis), same as Hugging Face. Limits tab shows both HF and Groq usage. Own Groq key is uncapped.
 - **Why:** feature
 - **Files:** `backend/app/quota.py`, `backend/app/main.py`, `frontend/src/components/limits-panel.tsx`
 
 ### 2026-08-18 — Hugging Face key and daily default-key limits
 - **Type:** minor
-- **Version:** Unreleased
+- **Version:** 1.5.0
 - **Summary:** Settings accepts a Hugging Face API key (browser-only). Empty field uses server HF_TOKEN with a 30/day cap per browser id and IP (Redis). Cache hits do not count. Limits tab shows used/remaining. Own HF token is uncapped.
 - **Why:** feature
 - **Files:** `backend/app/quota.py`, `backend/app/llm.py`, `backend/app/main.py`, `frontend/src/components/limits-panel.tsx`, `frontend/src/components/settings-panel.tsx`

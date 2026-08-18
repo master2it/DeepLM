@@ -75,18 +75,40 @@ export default function HomePage() {
         </div>
         {health && (
           <div className="flex flex-wrap gap-2">
-            <Badge>
+            <Badge
+              className={
+                health.ollama
+                  ? "border-emerald-700 bg-emerald-950 text-emerald-300"
+                  : "border-red-700 bg-red-950 text-red-300"
+              }
+            >
               {health.ollama
                 ? `Ollama: ${health.ollama_model}`
                 : "Ollama: offline"}
             </Badge>
-            <Badge>{hfReady ? "HF: ready" : "HF: not set"}</Badge>
-            <Badge>{groqReady ? "Groq: ready" : "Groq: not set"}</Badge>
+            <Badge
+              className={
+                hfReady
+                  ? "border-emerald-700 bg-emerald-950 text-emerald-300"
+                  : "border-red-700 bg-red-950 text-red-300"
+              }
+            >
+              {hfReady ? "HF: ready" : "HF: not set"}
+            </Badge>
+            <Badge
+              className={
+                groqReady
+                  ? "border-emerald-700 bg-emerald-950 text-emerald-300"
+                  : "border-red-700 bg-red-950 text-red-300"
+              }
+            >
+              {groqReady ? "Groq: ready" : "Groq: not set"}
+            </Badge>
           </div>
         )}
       </header>
       <Tabs defaultValue="grammar">
-        <TabsList className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-800 bg-zinc-900/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:static sm:z-auto sm:border-0 sm:bg-zinc-800 sm:pb-1 sm:backdrop-blur-none">
+        <TabsList className="h-fit fixed inset-x-0 bottom-0 z-50 border-t border-zinc-800 bg-zinc-900/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:static sm:z-auto sm:border-0 sm:bg-zinc-800 sm:pb-1 sm:backdrop-blur-none">
           <TabsTrigger value="grammar">
             <SpellCheck className="size-5 sm:hidden" aria-hidden />
             <span className="sm:hidden">Grammar</span>
