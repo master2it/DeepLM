@@ -36,10 +36,20 @@ import {
 
 const STYLE_KEYS = [
   { key: "native" as const, label: "Native" },
-  { key: "friendly" as const, label: "Friendly" },
+  { key: "friendly" as const, label: "Friendly / Casual" },
   { key: "professional" as const, label: "Professional" },
-  { key: "literal" as const, label: "Literal" },
 ];
+
+function localesFor(meta: LanguagesPayload | null, lang: string): string[] {
+  const listed = meta?.locales?.[lang];
+  if (listed && listed.length) return listed;
+  const fallback = meta?.default_locales?.[lang];
+  return fallback ? [fallback] : [lang];
+}
+
+function defaultLocaleFor(meta: LanguagesPayload | null, lang: string): string {
+  return meta?.default_locales?.[lang] || localesFor(meta, lang)[0] || lang;
+}
 
 function stylePair(
   result: GrammarResult,
@@ -70,6 +80,7 @@ export function GrammarFixer({
   const [text, setText] = useState("");
   const [fromLang, setFromLang] = useState("English");
   const [toLang, setToLang] = useState("Persian");
+  const [toLocale, setToLocale] = useState("Iranian Persian");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GrammarResult | null>(null);
@@ -82,11 +93,22 @@ export function GrammarFixer({
         setMeta(data);
         setFromLang(data.default_from);
         setToLang(data.default_to);
+        setToLocale(
+          data.default_locales?.[data.default_to] ||
+            data.locales?.[data.default_to]?.[0] ||
+            data.default_to
+        );
       })
       .catch((e) => setError(e.message));
   }, []);
 
   const rtl = new Set(meta?.rtl ?? ["Persian", "Arabic"]);
+  const localeOptions = localesFor(meta, toLang);
+
+  function changeToLang(next: string) {
+    setToLang(next);
+    setToLocale(defaultLocaleFor(meta, next));
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -105,6 +127,7 @@ export function GrammarFixer({
         text: text.trim(),
         from_lang: fromLang,
         to_lang: toLang,
+        to_locale: toLocale,
         provider,
         groq_api_key: groqApiKey,
         hf_api_key: hfApiKey,
@@ -115,6 +138,7 @@ export function GrammarFixer({
           text: text.trim(),
           from_lang: fromLang,
           to_lang: toLang,
+          to_locale: toLocale,
           provider: data.provider,
           result: data,
         })
@@ -130,7 +154,8 @@ export function GrammarFixer({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <p className="text-sm text-zinc-400">
-        Native, Friendly, Professional, and Literal in {toLang} — how a local would write it.
+        Understands what you mean, then Native, Friendly / Casual, and Professional in{" "}
+        {toLocale}.
         {(fromLang === "German" && toLang === "Persian") ||
         (fromLang === "Persian" && toLang === "German")
           ? " · German ↔ Persian (du/Sie and تو/شما)"
@@ -170,15 +195,16 @@ export function GrammarFixer({
           title="Swap From / To"
           className="mx-auto sm:mx-0"
           onClick={() => {
+            const nextTo = fromLang;
             setFromLang(toLang);
-            setToLang(fromLang);
+            changeToLang(nextTo);
           }}
         >
           <ArrowLeftRight className="h-4 w-4 rotate-90 sm:rotate-0" />
         </Button>
         <div className="w-full space-y-1 sm:min-w-40 sm:flex-1">
           <Label>To</Label>
-          <Select value={toLang} onValueChange={setToLang}>
+          <Select value={toLang} onValueChange={changeToLang}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -186,6 +212,24 @@ export function GrammarFixer({
               {(meta?.languages ?? [toLang]).map((lang) => (
                 <SelectItem key={lang} value={lang}>
                   {lang}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-full space-y-1 sm:min-w-44 sm:flex-1">
+          <Label>Locale</Label>
+          <Select
+            value={localeOptions.includes(toLocale) ? toLocale : localeOptions[0]}
+            onValueChange={setToLocale}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {localeOptions.map((loc) => (
+                <SelectItem key={loc} value={loc}>
+                  {loc}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -202,8 +246,8 @@ export function GrammarFixer({
           at: item.at,
           title: item.text,
           subtitle: `${item.from_lang} → ${item.to_lang}${
-            item.provider ? ` · ${item.provider}` : ""
-          } · ${formatHistoryTime(item.at)}`,
+            item.to_locale ? ` (${item.to_locale})` : ""
+          }${item.provider ? ` · ${item.provider}` : ""} · ${formatHistoryTime(item.at)}`,
         }))}
         onSelect={(id) => {
           const item = history.find((row) => row.id === id);
@@ -211,6 +255,8 @@ export function GrammarFixer({
           setText(item.text);
           setFromLang(item.from_lang);
           setToLang(item.to_lang);
+          if (item.to_locale) setToLocale(item.to_locale);
+          else setToLocale(defaultLocaleFor(meta, item.to_lang));
           setResult(item.result);
           setError(null);
         }}
@@ -269,6 +315,38 @@ export function GrammarFixer({
               </Card>
             );
           })}
+          {result.grammarNotes && result.grammarNotes.length > 0 ? (
+            <Card className="border-amber-800 bg-zinc-950">
+              <CardHeader>
+                <CardTitle className="text-amber-400">Grammar Notes</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-zinc-300">
+                {result.grammarNotes.map((note, i) => (
+                  <p key={i} className="whitespace-pre-wrap break-words">
+                    {note.original && note.correction ? (
+                      <>
+                        <span className="text-zinc-100">
+                          “{note.original}” → “{note.correction}”
+                        </span>
+                        {note.explanation ? `: ${note.explanation}` : ""}
+                      </>
+                    ) : (
+                      note.explanation
+                    )}
+                  </p>
+                ))}
+              </CardContent>
+            </Card>
+          ) : result.grammar_notes ? (
+            <Card className="border-amber-800 bg-zinc-950">
+              <CardHeader>
+                <CardTitle className="text-amber-400">Grammar Notes</CardTitle>
+              </CardHeader>
+              <CardContent className="whitespace-pre-wrap break-words text-sm text-zinc-300">
+                {result.grammar_notes}
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
       )}
     </form>

@@ -11,7 +11,7 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-CACHE_SCHEMA = 9
+CACHE_SCHEMA = 11
 _client = None
 _client_failed = False
 
@@ -33,6 +33,7 @@ def make_cache_key(kind: str, parts: dict[str, Any]) -> str:
         "text": _normalize_text(str(parts.get("text") or "")),
         "from_lang": parts.get("from_lang") or "",
         "to_lang": parts.get("to_lang") or "",
+        "to_locale": parts.get("to_locale") or "",
         "language": parts.get("language") or "",
         "tense": parts.get("tense") or "",
         "context": _normalize_text(str(parts.get("context") or "")),

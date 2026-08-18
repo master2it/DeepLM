@@ -43,56 +43,147 @@ TENSE_COUNTS = {
     "German": len(GERMAN_TENSE_LABELS),
 }
 
+LANGUAGE_LOCALES: dict[str, tuple[str, ...]] = {
+    "English": (
+        "American English",
+        "British English",
+        "Canadian English",
+        "Australian English",
+    ),
+    "German": (
+        "German (Germany)",
+        "Austrian German",
+        "Swiss German",
+    ),
+    "Spanish": (
+        "Spanish (Spain)",
+        "Mexican Spanish",
+        "Latin American Spanish",
+    ),
+    "French": ("French (France)", "Canadian French", "Belgian French"),
+    "Portuguese": ("Brazilian Portuguese", "European Portuguese"),
+    "Arabic": ("Modern Standard Arabic", "Egyptian Arabic", "Levantine Arabic"),
+    "Persian": ("Iranian Persian",),
+    "Turkish": ("Turkish (Turkey)",),
+    "Italian": ("Italian (Italy)",),
+    "Russian": ("Russian (Russia)",),
+    "Chinese": ("Mainland Chinese (Simplified)", "Taiwan Chinese (Traditional)"),
+    "Japanese": ("Japanese (Japan)",),
+    "Korean": ("Korean (South Korea)",),
+    "Hindi": ("Hindi (India)",),
+}
+
+# Default locale label per language (first option).
+TARGET_LOCALES = {lang: opts[0] for lang, opts in LANGUAGE_LOCALES.items()}
+
+
+def default_locale(language: str) -> str:
+    opts = LANGUAGE_LOCALES.get(language)
+    if opts:
+        return opts[0]
+    return language
+
+
+def resolve_locale(language: str, locale: str | None) -> str:
+    text = (locale or "").strip()
+    opts = LANGUAGE_LOCALES.get(language) or ()
+    if not text:
+        return default_locale(language)
+    for option in opts:
+        if option.lower() == text.lower():
+            return option
+    return default_locale(language)
+
+
+def locales_for(language: str) -> list[str]:
+    return list(LANGUAGE_LOCALES.get(language) or (default_locale(language),))
+
 STYLE_VARIANTS = (
     ("Native", "native"),
-    ("Friendly", "friendly"),
+    ("Friendly / Casual", "friendly"),
     ("Professional", "professional"),
-    ("Literal", "literal"),
 )
 LEGACY_STYLE_KEYS = (
     "friendly_casual",
     "professional_formal",
     "everyday_neutral",
+    "literal",
 )
 
 TEACHER_EDITOR_INSTRUCTION = """
-You are an expert native-language editor and localization specialist.
+You are a native-level language editor, translator, and communication expert.
 
-Your primary goal is NOT to produce grammatically perfect textbook language.
-Your goal is to make every sentence sound like it was naturally written by an
-educated native speaker living in that country today.
+Your job is to understand what the user MEANS, then express that meaning naturally
+in the target language.
 
-General rules:
-- Never translate word-for-word.
-- Preserve the original meaning, tone, and intent.
-- Rewrite naturally whenever a native speaker would.
-- Prioritize natural phrasing over literal accuracy.
-- Remove awkward constructions, unnecessary words, and AI-like wording.
-- Avoid textbook grammar if native speakers wouldn't normally say it that way.
-- Use contractions whenever natural (English: I'm, don't, it's, we'd).
-- Prefer everyday vocabulary over formal vocabulary unless the original text is formal.
-- Preserve humor, emotion, sarcasm, and personality.
-- If a sentence sounds like Google Translate, rewrite it completely.
-- Never produce robotic or overly polished language.
-- Make the result indistinguishable from something a local would write.
-- Correct grammar, punctuation, word order, prepositions, articles, tense, and spelling silently.
-- Do not mention what was changed. Do not explain grammar. Do not apologize.
-- Do not say "Here's the corrected version."
+Do NOT treat the input as a grammar exercise.
+Do NOT simply correct the existing sentence word by word.
 
-Localization:
-- Adapt expressions for the target country.
-- English (US): "I am going to" → "I'm gonna" (casual Native/Friendly only);
-  "I do not know" → "I don't know"; "I have no idea" not "I do not have any idea."
-- German: natural spoken German, not textbook translations. Common expressions Germans actually use.
-- French: idiomatic French. Avoid literal English sentence structure.
-- Spanish: country-appropriate, natural spoken language.
-- Persian: contemporary everyday Persian, not stiff literary calques.
+The user's {source_language} (or mixed input) may contain grammar mistakes, incorrect
+word choices, missing words, wrong sentence structure, direct translations from their
+native language, unnatural expressions, poor vocabulary, ambiguous phrasing, colloquial
+expressions, and incorrect tense or prepositions.
 
-Output versions (JSON fields below — no markdown headings in the reply):
-- native: exactly how a native speaker would naturally say it.
-- friendly: more relaxed and conversational.
-- professional: natural business/workplace version (not stiff; still something a local would write at work).
-- literal: a close translation preserving the original wording (this is the only place to stay close to the source words).
+Your first priority is understanding the intended meaning.
+
+Core process (do this silently, then output JSON only):
+1. Understand what the user is trying to say.
+2. Infer the intended meaning from context.
+3. Identify unnatural or incorrect parts.
+4. Decide how a native speaker would communicate the same idea.
+5. Rewrite it naturally.
+6. Keep the original meaning, intention, emotion, and level of formality.
+7. Do not preserve incorrect sentence structure just because it exists in the original.
+
+If the original sentence is technically correct but sounds unnatural, rewrite it anyway.
+If the wording is ambiguous, choose the most likely intended meaning based on context.
+
+Native speaker rule:
+The final text must sound like something a real person from the target country would
+naturally say. Avoid textbook language, Google Translate style, AI-like phrasing,
+unnecessary formality, unnatural vocabulary, word-for-word translation, overly
+sophisticated words, corporate buzzwords unless appropriate, and perfect-but-unnatural
+sentences. Prefer everyday vocabulary, natural sentence structure, common expressions,
+contractions when appropriate, natural phrasal verbs in English, and real conversational
+patterns. Grammar correctness matters, but naturalness matters more.
+
+Tone: preserve casual, friendly, direct, professional, emotional, funny, or frustrated
+tone. Do not make casual messages unnecessarily formal.
+
+Never criticize the user's language. Never say their English (or other language) is bad.
+Never give a long grammar lesson. Never change the intended meaning. Never invent
+information that is not in the original. If the user gives only a short sentence, keep
+the versions short.
+
+The goal is not "make this grammatically correct."
+The goal is "understand what I mean and make me sound like a native speaker."
+
+Target language: {target_language}
+Target locale/dialect: {target_locale}
+
+The three rewrites MUST be meaningfully different — not three textbook clones.
+- native: most natural version a local in {target_locale} would actually use.
+  Preserve the original tone (do NOT auto-casualize; do NOT make it more formal).
+  No unnecessarily sophisticated vocabulary.
+- friendly: more relaxed and conversational. Contractions and everyday phrasing.
+  Do not add slang unnecessarily.
+- professional: workplace-appropriate but human. No corporate buzzwords,
+  no academic stiffness. A real professional from that locale.
+- grammar_notes: array of {{"original","correction","explanation"}} for meaningful
+  issues only. If none, use one item with explanation that there were no meaningful
+  grammar mistakes (original/correction empty).
+
+Locale-aware naturalness (authentic everyday language, not stereotypical slang):
+- English + American English: "Do you want to grab coffee?" / "I can't make it."
+- English + British English: "Do you fancy grabbing a coffee?" / "I can't make it."
+- German + German (Germany): contemporary German used in Germany, not English calques.
+- Spanish + Mexican Spanish: natural Mexican Spanish where it fits.
+Apply the same idea for whatever locale is selected.
+
+Example of intent (do this class of rewrite, not these exact strings):
+"I want say him that I can't come tomorrow because I have some work."
+→ NOT the literal patch "I want to tell him that I can't come tomorrow because I have some work."
+→ YES "I want to tell him I can't make it tomorrow because I've got some work to do."
 """.strip()
 
 GERMAN_PERSIAN_RULES = """
@@ -105,22 +196,27 @@ German ↔ Persian (mandatory when either language is German and the other is Pe
 - German "es wird fertig" / "es ist nächste Woche soweit" → Persian "آماده می‌شه / آماده می‌شود", NOT "من آماده می‌شم".
 - German separable verbs, compound nouns, and modal verbs must be rendered idiomatically in Persian (e.g. abholen → آمدن و گرفتن / برداشتن).
 - Persian pickup "می‌تونی بیای بگیری" → German "du kannst es abholen" / "Sie können es abholen", not a stiff literal.
-- Keep tense, time words, and who/what/when identical across Native, Friendly, Professional, and Literal.
+- Keep tense, time words, and who/what/when identical across Native, Friendly / Casual, and Professional.
 - Native/Friendly German: du if the source is informal; Professional: Sie. Do not mix du and Sie in one version.
 """.strip()
 
-def native_target_label(tgt: str) -> str:
-    if tgt == "English":
-        return "natural contemporary American English (how a local writes today)"
-    if tgt == "German":
-        return "natural contemporary German (how a local writes today)"
-    if tgt == "Persian":
-        return "natural contemporary Persian (how a local writes today)"
-    if tgt == "French":
-        return "natural contemporary French (how a local writes today)"
-    if tgt == "Spanish":
-        return "natural contemporary Spanish (how a local writes today)"
-    return f"natural contemporary {tgt} (how a local writes today)"
+def native_target_label(tgt: str, locale: str | None = None) -> str:
+    loc = resolve_locale(tgt, locale)
+    return f"natural contemporary {tgt} as spoken/written in {loc} today"
+
+
+def native_editor_instruction(
+    *,
+    source_language: str,
+    target_language: str,
+    target_locale: str | None = None,
+) -> str:
+    locale = resolve_locale(target_language, target_locale)
+    return TEACHER_EDITOR_INSTRUCTION.format(
+        source_language=source_language,
+        target_language=target_language,
+        target_locale=locale,
+    )
 
 
 SEMANTIC_ACCURACY_RULES = """

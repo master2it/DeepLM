@@ -28,6 +28,20 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+### 2026-08-18 — Locale selector + structured grammar notes
+- **Type:** minor
+- **Version:** Unreleased
+- **Summary:** Target locale is separate from language (US/UK/DE/MX, …). Prompt is meaning-first and locale-aware. Grammar notes are structured original/correction/explanation.
+- **Why:** feature
+- **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/main.py`, `backend/app/cache.py`, `frontend/src/components/grammar-fixer.tsx`, `frontend/src/lib/api.ts`
+
+### 2026-08-18 — Meaning-first native rewrite + grammar notes
+- **Type:** minor
+- **Version:** Unreleased
+- **Summary:** Translate infers intended meaning, rewrites as a native speaker would, and returns Native, Friendly / Casual, Professional, plus short Grammar Notes.
+- **Why:** feature
+- **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`, `frontend/src/components/grammar-fixer.tsx`
+
 ### 2026-08-18 — Native editor: Native / Friendly / Professional / Literal
 - **Type:** minor
 - **Version:** Unreleased

@@ -11,6 +11,7 @@ export type GrammarHistoryItem = {
   text: string;
   from_lang: string;
   to_lang: string;
+  to_locale?: string;
   provider?: string;
   result: GrammarResult;
 };
@@ -69,7 +70,8 @@ export function pushGrammarHistory(
       !(
         row.text.trim().toLowerCase() === text.toLowerCase() &&
         row.from_lang === item.from_lang &&
-        row.to_lang === item.to_lang
+        row.to_lang === item.to_lang &&
+        (row.to_locale || "") === (item.to_locale || "")
       )
   );
   const list = [next, ...rest];

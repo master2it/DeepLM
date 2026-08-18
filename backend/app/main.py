@@ -17,10 +17,12 @@ from app.constants import (
     DEFAULT_TENSE_LANGUAGE,
     GERMAN_TENSES,
     GRAMMAR_LANGUAGES,
+    LANGUAGE_LOCALES,
     RTL_TARGETS,
     STYLE_VARIANTS,
     TENSE_COUNTS,
     TENSE_LANGUAGES,
+    resolve_locale,
 )
 from app.cache import fold_user_text, get_cached, redis_reachable, save_cached
 from app.changelog import load_changelog
@@ -55,6 +57,7 @@ class GrammarRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=MAX_INPUT_CHARS)
     from_lang: str = DEFAULT_GRAMMAR_FROM
     to_lang: str = DEFAULT_GRAMMAR_TO
+    to_locale: str | None = None
     context: str | None = None
     provider: ProviderField | None = None
     groq_api_key: str | None = None
@@ -117,6 +120,8 @@ def languages():
         "rtl": sorted(RTL_TARGETS),
         "default_from": DEFAULT_GRAMMAR_FROM,
         "default_to": DEFAULT_GRAMMAR_TO,
+        "locales": {lang: list(opts) for lang, opts in LANGUAGE_LOCALES.items()},
+        "default_locales": {lang: opts[0] for lang, opts in LANGUAGE_LOCALES.items()},
         "styles": [{"label": label, "key": key} for label, key in STYLE_VARIANTS],
         "tense_languages": TENSE_LANGUAGES,
         "default_tense_language": DEFAULT_TENSE_LANGUAGE,
@@ -171,6 +176,7 @@ def api_limits(
 @app.post("/api/grammar")
 def grammar(req: GrammarRequest, request: Request):
     text = fold_user_text(req.text)
+    locale = resolve_locale(req.to_lang, req.to_locale)
     return _run_generation(
         request,
         req.provider,
@@ -181,6 +187,7 @@ def grammar(req: GrammarRequest, request: Request):
             "text": text,
             "from_lang": req.from_lang,
             "to_lang": req.to_lang,
+            "to_locale": locale,
             "context": req.context or "",
             "provider": req.provider or "",
         },
@@ -188,6 +195,7 @@ def grammar(req: GrammarRequest, request: Request):
             text,
             from_lang=req.from_lang,
             to_lang=req.to_lang,
+            to_locale=locale,
             context=req.context,
             provider=req.provider,
             groq_api_key=req.groq_api_key,

@@ -15,15 +15,23 @@ export const TENSE_LANG_STORAGE_KEY = "deeplm.tense_language";
 
 export type StylePair = { from: string; to: string };
 
+export type GrammarNote = {
+  original: string;
+  correction: string;
+  explanation: string;
+};
+
 export type GrammarResult = {
   from_lang: string;
   to_lang: string;
+  to_locale?: string;
   wants_translation: boolean;
   intended_meaning?: string;
   best_version?: string;
   canonical_meaning?: string;
   subject_reading?: string;
   grammar_notes?: string;
+  grammarNotes?: GrammarNote[];
   provider?: string;
   native?: StylePair;
   friendly?: StylePair;
@@ -68,6 +76,8 @@ export type LanguagesPayload = {
   tense_counts?: Partial<Record<TenseLanguage, number>>;
   german_tenses?: { key: GermanTense; label: string }[];
   max_input_chars?: number;
+  locales?: Record<string, string[]>;
+  default_locales?: Record<string, string>;
 };
 
 export const MAX_INPUT_CHARS = 1000;
@@ -260,6 +270,7 @@ export async function postGrammar(body: {
   text: string;
   from_lang: string;
   to_lang: string;
+  to_locale?: string;
   provider: ProviderId;
   groq_api_key?: string;
   hf_api_key?: string;

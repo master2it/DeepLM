@@ -78,14 +78,14 @@ class PromptArchitectureTests(unittest.TestCase):
         self.assertIn("native", system)
         self.assertIn("friendly", system)
         self.assertIn("professional", system)
-        self.assertIn("literal", system)
-        self.assertIn("Never translate word-for-word", system)
+        self.assertIn("grammar_notes", system)
+        self.assertIn("understand what the user MEANS", system)
         self.assertIn("Do not invent explicit subjects", system)
         self.assertIn("Never flatten", system)
         self.assertIn("American English", system)
-        self.assertIn("Native, Friendly", user)
+        self.assertIn("Grammar Notes", user)
         self.assertIn("{text}", user)
-        self.assertNotIn("Grammar notes", system)
+        self.assertIn("I can't make it", system)
 
     def test_german_persian_prompt_both_directions(self):
         de_fa, user_de = grammar.build_styled_translation_prompt(
@@ -119,6 +119,60 @@ class PromptArchitectureTests(unittest.TestCase):
         self.assertIn("order status", system)
 
 
+    def test_locale_is_in_prompt_and_unknown_falls_back(self):
+        from app.constants import resolve_locale
+
+        self.assertEqual(resolve_locale("English", None), "American English")
+        self.assertEqual(resolve_locale("English", ""), "American English")
+        self.assertEqual(resolve_locale("English", "not-a-locale"), "American English")
+        self.assertEqual(resolve_locale("English", "british english"), "British English")
+        self.assertEqual(resolve_locale("German", None), "German (Germany)")
+        self.assertEqual(resolve_locale("Spanish", "Mexican Spanish"), "Mexican Spanish")
+
+        us, _ = grammar.build_styled_translation_prompt(
+            src_hint="Persian",
+            tgt="English",
+            wants_translation=True,
+            locale="American English",
+        )
+        uk, user_uk = grammar.build_styled_translation_prompt(
+            src_hint="Persian",
+            tgt="English",
+            wants_translation=True,
+            locale="British English",
+        )
+        de, _ = grammar.build_styled_translation_prompt(
+            src_hint="English",
+            tgt="German",
+            wants_translation=True,
+            locale="German (Germany)",
+        )
+        es, _ = grammar.build_styled_translation_prompt(
+            src_hint="English",
+            tgt="Spanish",
+            wants_translation=True,
+            locale="Mexican Spanish",
+        )
+        self.assertIn("American English", us)
+        self.assertIn("British English", uk)
+        self.assertIn("British English", user_uk)
+        self.assertIn("grab coffee", us)
+        self.assertIn("fancy grabbing", uk)
+        self.assertIn("German (Germany)", de)
+        self.assertIn("Mexican Spanish", es)
+        self.assertNotEqual(us, uk)
+
+    def test_prompt_requires_distinct_outputs(self):
+        system, _ = grammar.build_styled_translation_prompt(
+            src_hint="English",
+            tgt="English",
+            wants_translation=False,
+            locale="American English",
+        )
+        self.assertIn("MUST be meaningfully different", system)
+        self.assertIn("do NOT auto-casualize", system)
+
+
 class ParseContractTests(unittest.TestCase):
     def test_parse_preserves_ui_keys(self):
         raw = {
@@ -129,7 +183,7 @@ class ParseContractTests(unittest.TestCase):
                 "from": "هفته آینده آماده می‌شه",
                 "to": "It will be ready next week.",
             },
-            "literal": {"from": "هفته آینده آماده میشه", "to": "Next week it becomes ready."},
+            "grammar_notes": '"اماده" → "آماده": missing hamza/alef in spelling.',
         }
         parsed = grammar.parse_styled_translation_response(
             raw, src_hint="Persian", tgt="English", wants_translation=True
@@ -138,6 +192,28 @@ class ParseContractTests(unittest.TestCase):
         self.assertTrue(parsed["wants_translation"])
         self.assertEqual(parsed["native"]["to"], "It'll be ready next week.")
         self.assertEqual(parsed["friendly"]["to"], parsed["friendly_casual"]["to"])
+        self.assertIn("آماده", parsed["grammar_notes"])
+        self.assertTrue(parsed["grammarNotes"])
+
+    def test_parses_structured_grammar_notes(self):
+        raw = {
+            "detected_lang": "English",
+            "native": {"from": "I agree.", "to": ""},
+            "friendly": {"from": "Yeah, I agree.", "to": ""},
+            "professional": {"from": "I agree.", "to": ""},
+            "grammarNotes": [
+                {
+                    "original": "I am agree",
+                    "correction": "I agree",
+                    "explanation": '"agree" is a verb, so "am" is not needed.',
+                }
+            ],
+        }
+        parsed = grammar.parse_styled_translation_response(
+            raw, src_hint="English", tgt="English", wants_translation=False
+        )
+        self.assertEqual(parsed["grammarNotes"][0]["original"], "I am agree")
+        self.assertIn("I agree", parsed["grammar_notes"])
 
     def test_best_version_falls_back_to_canonical(self):
         raw = {

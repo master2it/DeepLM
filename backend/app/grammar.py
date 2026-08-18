@@ -13,12 +13,13 @@ from app.constants import (
     STRUCTURE_FORMAT_RULES,
     STYLE_VARIANTS,
     TARGET_LANGUAGES,
-    TEACHER_EDITOR_INSTRUCTION,
+    native_editor_instruction,
+    native_target_label,
+    resolve_locale,
     _GERMAN_READY_FIRST_PERSON_RE,
     _PERSIAN_EXPLICIT_I_RE,
     _PERSIAN_IT_READY_RE,
     _READY_FIRST_PERSON_RE,
-    native_target_label,
 )
 from app.jsonutil import parse_model_json
 from app.llm import LLMError, chat
@@ -88,8 +89,51 @@ def _first_style_pair(data: dict, *keys: str) -> dict[str, str]:
     return {"from": "", "to": ""}
 
 
+def _parse_grammar_notes(raw) -> tuple[list[dict[str, str]], str]:
+    payload = raw.get("grammarNotes") if isinstance(raw, dict) else None
+    if payload is None and isinstance(raw, dict):
+        payload = raw.get("grammar_notes")
+    items: list[dict[str, str]] = []
+    if isinstance(payload, list):
+        for row in payload:
+            if isinstance(row, dict):
+                original = str(row.get("original") or "").strip()
+                correction = str(
+                    row.get("correction") or row.get("fixed") or ""
+                ).strip()
+                explanation = str(
+                    row.get("explanation") or row.get("why") or ""
+                ).strip()
+                if original or correction or explanation:
+                    items.append(
+                        {
+                            "original": original,
+                            "correction": correction,
+                            "explanation": explanation,
+                        }
+                    )
+            elif isinstance(row, str) and row.strip():
+                items.append(
+                    {"original": "", "correction": "", "explanation": row.strip()}
+                )
+    elif isinstance(payload, str) and payload.strip():
+        items.append(
+            {"original": "", "correction": "", "explanation": payload.strip()}
+        )
+    lines = []
+    for note in items:
+        if note["original"] and note["correction"]:
+            line = f'"{note["original"]}" → "{note["correction"]}"'
+            if note["explanation"]:
+                line += f': {note["explanation"]}'
+            lines.append(line)
+        elif note["explanation"]:
+            lines.append(note["explanation"])
+    return items, "\n".join(lines)
+
+
 def parse_styled_translation_response(
-    data, *, src_hint: str, tgt: str, wants_translation: bool
+    data, *, src_hint: str, tgt: str, wants_translation: bool, locale: str = ""
 ) -> dict:
     if not isinstance(data, dict):
         return {"error": "Unexpected model response."}
@@ -98,7 +142,7 @@ def parse_styled_translation_response(
     native = _first_style_pair(data, "native", "everyday_neutral")
     friendly = _first_style_pair(data, "friendly", "friendly_casual")
     professional = _first_style_pair(data, "professional", "professional_formal")
-    literal = _first_style_pair(data, "literal")
+    notes, notes_text = _parse_grammar_notes(data)
     canonical = (data.get("canonical_meaning") or "").strip()
     best_version = (data.get("best_version") or canonical or native.get("from") or "").strip()
     if not canonical:
@@ -110,21 +154,20 @@ def parse_styled_translation_response(
             friendly["from"] = native["from"] or best_version
         if not professional["from"]:
             professional["from"] = native["from"] or best_version
-        if not literal["from"]:
-            literal["from"] = native["from"] or best_version
     return {
         "from_lang": detected,
         "to_lang": tgt,
+        "to_locale": locale,
         "wants_translation": wants_translation,
         "intended_meaning": (data.get("intended_meaning") or "").strip(),
         "best_version": best_version,
         "canonical_meaning": canonical,
         "subject_reading": (data.get("subject_reading") or "").strip(),
-        "grammar_notes": "",
+        "grammar_notes": notes_text,
+        "grammarNotes": notes,
         "native": native,
         "friendly": friendly,
         "professional": professional,
-        "literal": literal,
         "friendly_casual": friendly,
         "professional_formal": professional,
         "everyday_neutral": native,
@@ -138,27 +181,34 @@ def build_styled_translation_prompt(
     wants_translation: bool,
     context=None,
     retry_feedback=None,
+    locale: str | None = None,
 ) -> tuple[str, str]:
-    tgt_label = native_target_label(tgt)
+    loc = resolve_locale(tgt, locale)
+    tgt_label = native_target_label(tgt, loc)
+    editor = native_editor_instruction(
+        source_language=src_hint,
+        target_language=tgt,
+        target_locale=loc,
+    )
     pair = {src_hint, tgt}
     german_persian = pair == {"German", "Persian"}
     pair_rules = f"\n{GERMAN_PERSIAN_RULES}\n" if german_persian else ""
 
     translation_block = (
-        f"Write Native, Friendly, Professional, and Literal in {tgt_label}.\n"
-        f'"from" = silently grammar-enhanced {src_hint} (same enhanced source on native/friendly/professional).\n'
-        f'"to" = that version in {tgt_label}. Native = how a local would say it; '
-        f"Friendly = more relaxed; Professional = natural workplace; Literal = close wording.\n"
-        f"Do not explain anything. Same who/what/when in all four. Keep source layout."
+        f"Express the intended meaning in {tgt} / {loc}.\n"
+        f'"from" = natural rewrite of the input in {src_hint} (same enhanced source on all three).\n'
+        f'"to" = Native / Friendly / Professional in {tgt} ({loc}). They must not be clones.\n'
+        f"grammar_notes: JSON array of original/correction/explanation.\n"
+        f"Same who/what/when. Keep source layout. Short input → short output."
         if wants_translation
         else (
-            "Stay in the source language. Put each version in \"from\" and set \"to\" to empty.\n"
-            "Native / Friendly / Professional / Literal as defined. Do not explain anything."
+            f"Stay in {src_hint} / {loc}. Put each version in \\"from\\" and set \\"to\\" to empty.\n"
+            "Native preserves tone; Friendly is more relaxed; Professional is workplace-human."
         )
     )
 
     context_block = (
-        f"Surrounding conversation/context (use only to resolve ambiguous subjects):\n{context}\n"
+        f"Surrounding conversation/context (use it to infer intended meaning):\n{context}\n"
         if context and str(context).strip()
         else "No extra conversation context was provided.\n"
     )
@@ -171,7 +221,7 @@ def build_styled_translation_prompt(
     )
 
     system_prompt = f"""
-{TEACHER_EDITOR_INSTRUCTION}
+{editor}
 
 SEMANTIC ACCURACY (mandatory):
 {SEMANTIC_ACCURACY_RULES}
@@ -185,29 +235,31 @@ Task:
 {pair_rules}
 {context_block}
 {retry_block}
-Output ONLY valid JSON (no markdown, no commentary, no grammar notes).
+Output ONLY valid JSON (no markdown).
 Escape every double quote inside string values as \\".
 Use \\n for line breaks inside strings — never a raw newline.
 {{
     "detected_lang": "<detected language name>",
     "native": {{"from": "<enhanced source>", "to": "<Native {tgt} or empty>"}},
-    "friendly": {{"from": "<same enhanced source>", "to": "<Friendly {tgt} or empty>"}},
+    "friendly": {{"from": "<same enhanced source>", "to": "<Friendly / Casual {tgt} or empty>"}},
     "professional": {{"from": "<same enhanced source>", "to": "<Professional {tgt} or empty>"}},
-    "literal": {{"from": "<source close to original wording>", "to": "<Literal {tgt} or empty>"}}
+    "grammar_notes": [
+        {{"original": "<wrong fragment>", "correction": "<natural fix>", "explanation": "<why>"}}
+    ]
 }}
 """.strip()
 
     if wants_translation:
         user_msg = (
-            f"Rewrite this {src_hint} so it sounds like a native, then give Native, Friendly, "
-            f"Professional, and Literal in {tgt_label}. Silent grammar fixes only. "
+            f"Understand what this {src_hint} means, then express it naturally in {tgt} "
+            f"({loc}). Return Native, Friendly / Casual, Professional, and Grammar Notes. "
             "Keep the same structure as the source.\n\n"
             "Text:\n{text}"
         )
     else:
         user_msg = (
-            "Rewrite this so it sounds like a native. Give Native, Friendly, Professional, "
-            "and Literal in the same language. Silent grammar fixes only.\n\n"
+            f"Understand what this means, then express it naturally in {tgt} ({loc}). "
+            "Return Native, Friendly / Casual, Professional, and Grammar Notes.\n\n"
             "Text:\n{text}"
         )
 
@@ -218,6 +270,7 @@ def get_styled_translations_from_ai(
     text: str,
     from_lang: str = DEFAULT_GRAMMAR_FROM,
     to_lang: str = DEFAULT_GRAMMAR_TO,
+    to_locale: str | None = None,
     context=None,
     provider: str | None = None,
     groq_api_key: str | None = None,
@@ -225,6 +278,7 @@ def get_styled_translations_from_ai(
 ) -> dict:
     src_hint = from_lang if from_lang in TARGET_LANGUAGES else DEFAULT_GRAMMAR_FROM
     tgt = to_lang if to_lang in TARGET_LANGUAGES else DEFAULT_GRAMMAR_TO
+    loc = resolve_locale(tgt, to_locale)
     wants_translation = src_hint != tgt
     used_provider = "huggingface"
 
@@ -236,6 +290,7 @@ def get_styled_translations_from_ai(
             wants_translation=wants_translation,
             context=context,
             retry_feedback=retry_feedback,
+            locale=loc,
         )
         user_msg = user_template.replace("{text}", text)
         content, used_provider = chat(
@@ -255,8 +310,10 @@ def get_styled_translations_from_ai(
             src_hint=src_hint,
             tgt=tgt,
             wants_translation=wants_translation,
+            locale=loc,
         )
         parsed["provider"] = used_provider
+        parsed["to_locale"] = loc
         return parsed
 
     try:

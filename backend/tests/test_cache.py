@@ -54,6 +54,29 @@ class CacheKeyTests(unittest.TestCase):
         )
         self.assertNotIn("gsk_", key)
 
+    def test_locale_changes_key(self):
+        a = make_cache_key(
+            "grammar",
+            {
+                "text": "hi",
+                "from_lang": "English",
+                "to_lang": "English",
+                "to_locale": "American English",
+                "provider": "groq",
+            },
+        )
+        b = make_cache_key(
+            "grammar",
+            {
+                "text": "hi",
+                "from_lang": "English",
+                "to_lang": "English",
+                "to_locale": "British English",
+                "provider": "groq",
+            },
+        )
+        self.assertNotEqual(a, b)
+
 
 if __name__ == "__main__":
     unittest.main()
