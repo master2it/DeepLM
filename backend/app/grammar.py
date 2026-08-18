@@ -10,6 +10,7 @@ from app.constants import (
     GERMAN_PERSIAN_RULES,
     GRAMMAR_FIX_RULES,
     COLLOCATION_CHUNK_RULES,
+    TRANSLATION_TONE_RULES,
     LEGACY_STYLE_KEYS,
     SEMANTIC_ACCURACY_RULES,
     STRUCTURE_FORMAT_RULES,
@@ -126,25 +127,46 @@ def _dup_feedback(native: str, friendly: str, professional: str, *, kind: str) -
         return None
     layer = "source-language rewrite (from / grammarEnhanced)" if kind == "source" else "translation (to)"
     if _near_duplicate(native, friendly):
+        if kind == "translated":
+            return (
+                f"HARD RULE FAILED: Native and Friendly/Casual {layer} are identical or nearly "
+                "identical. Translate each from's tone and chunks into a natural target "
+                "equivalent; do not calque one English sentence three times. "
+                "Casual from → casual to. Keep the same meaning."
+            )
         return (
             f"HARD RULE FAILED: Native and Friendly/Casual {layer} are identical or nearly "
             "identical. Independently rewrite Friendly/Casual from the ORIGINAL input as "
-            "medium-casual everyday speech (low slang; do not force wanna/gotta/no worries). "
-            "Do NOT copy Native.from. Then translate each source rewrite separately. "
-            "Keep the same meaning."
+            "more conversational than Native, not more polite. Use 0-2 chunks; do not "
+            "stack idioms. Do NOT copy Native.from. Then translate each source rewrite "
+            "separately into a natural target equivalent. Keep the same meaning."
         )
     if _near_duplicate(native, professional):
+        if kind == "translated":
+            return (
+                f"HARD RULE FAILED: Native and Professional {layer} are identical or nearly "
+                "identical. Translate each from's tone and chunks into a natural target "
+                "equivalent; do not calque one English sentence three times. "
+                "Professional from → professional-but-natural to. Keep the same meaning."
+            )
         return (
             f"HARD RULE FAILED: Native and Professional {layer} are identical or nearly "
             "identical. Independently rewrite Professional from the ORIGINAL input as "
             "clear polite coworker English, not formal (no unable to / kindly / prior to). "
-            "Do NOT copy Native.from. Then translate each source rewrite separately. "
-            "Keep the same meaning."
+            "Use 0-2 workplace collocations. Do NOT copy Native.from. Then translate each "
+            "source rewrite separately into a natural target equivalent. Keep the same meaning."
         )
     if _near_duplicate(friendly, professional):
+        if kind == "translated":
+            return (
+                f"HARD RULE FAILED: Friendly/Casual and Professional {layer} are nearly identical. "
+                "Translate each from's own tone into a natural target equivalent; do not calque "
+                "one English sentence. Same meaning."
+            )
         return (
             f"HARD RULE FAILED: Friendly/Casual and Professional {layer} are nearly identical. "
-            "Rewrite each from the ORIGINAL input independently, then translate each. Same meaning."
+            "Rewrite each from the ORIGINAL input independently (Friendly more conversational, "
+            "Professional workplace-natural). Then translate each. Same meaning."
         )
     return None
 
@@ -307,7 +329,8 @@ def build_styled_translation_prompt(
             f"be its own source-language rewrite — never copy Native "
             f"into Friendly or Professional, and never copy Grammar Fix into the rewrites.\n"
             f'Then translate EACH rewrite separately into {tgt} / {loc} as that tone\'s '
-            '"to". Do not translate one shared sentence four times.\n'
+            '"to" — meaning, tone, and chunks of THAT from, not word-for-word. '
+            "Do not translate one shared sentence four times.\n"
             "grammar_notes: analyze the ORIGINAL user input only, not the generated versions.\n"
             "Same who/what/when. Keep source layout. Short input → short output."
         )
@@ -333,6 +356,12 @@ def build_styled_translation_prompt(
         else ""
     )
 
+    translation_tone_section = (
+        f"\nTRANSLATION TONE (mandatory):\n{TRANSLATION_TONE_RULES}\n"
+        if wants_translation
+        else ""
+    )
+
     system_prompt = f"""
 {editor}
 
@@ -344,7 +373,7 @@ GRAMMAR FIX (mandatory, not a rewrite):
 
 NATURAL COLLOCATIONS AND CHUNKS (Native / Friendly / Professional only):
 {COLLOCATION_CHUNK_RULES}
-
+{translation_tone_section}
 SEMANTIC ACCURACY (mandatory):
 {SEMANTIC_ACCURACY_RULES}
 

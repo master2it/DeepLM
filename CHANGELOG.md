@@ -28,6 +28,13 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+### 2026-08-18 — Collocation intensity + tone-preserving translation
+- **Type:** patch
+- **Version:** Unreleased
+- **Summary:** Caps Native/Friendly/Professional at 0-2 natural chunks; Friendly cannot be more formal than Native. Each translation matches that version's tone instead of calquing English. Cache schema 17.
+- **Why:** bug
+- **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`, `backend/tests/test_translation_quality.py`
+
 ---
 
 ## [1.5.0] — 2026-08-18 — minor

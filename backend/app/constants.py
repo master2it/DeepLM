@@ -249,6 +249,8 @@ If Native and Friendly/Casual are too similar, rewrite Friendly/Casual.
 If Native and Professional are too similar, rewrite Professional.
 Do NOT change the meaning just to make them different.
 Do NOT add slang or legalese just to make the difference obvious.
+Friendly must not be more formal or more polite than Native.
+Do not overload collocations/chunks to artificially differentiate the outputs.
 Tone differentiation is REQUIRED. Meaning preservation is REQUIRED too.
 Naturalness is REQUIRED too.
 
@@ -366,6 +368,66 @@ Silent check on each Native / Friendly / Professional version:
 5. Am I using it because it is natural, or to sound sophisticated?
 If #5 is "to sound sophisticated", remove it.
 Natural > sophisticated. Common > impressive. Contextual > forced.
+
+Collocation intensity (Native / Friendly / Professional):
+Collocations and chunks must improve naturalness, NOT vocabulary complexity or formality.
+Do NOT assume: more idiomatic = more natural; more phrasal verbs = more casual;
+more sophisticated vocabulary = more professional.
+Use the SIMPLEST natural expression that fits the context.
+
+Budget (guidelines, not mandatory quotas). Do not overload a sentence.
+Native: 0-2 notable chunks. Friendly / Casual: 0-2 conversational chunks.
+Professional: 0-2 workplace collocations.
+If the original already sounds natural, use fewer changes.
+Do not stack multiple idiomatic expressions in one sentence.
+
+Friendly / Casual: normally more relaxed than Native. Do NOT make Friendly more
+polite or formal than Native. Use 0-2 natural conversational chunks when appropriate.
+Bad (too many deliberately selected chunks; sounds written):
+"Hey, would you mind sending me the file today? I need to go over it before our meeting. If you're tied up, just let me know."
+Better:
+"Hey, can you send me the file today? I need to look it over before tomorrow's meeting. If you're busy, no worries—just let me know."
+
+Native: chunks must feel effortless ("look it over", "get back to you", "take a look",
+"make sure", "work on"). Do not deliberately insert idioms.
+
+Professional: natural workplace collocations, like Slack, Teams, or a normal work
+email from a modern professional. Avoid formal/legal/business-letter language:
+"prior to", "unable to do so", "kindly inform me", "at your earliest convenience",
+"I would appreciate it if...", "with regard to", "in relation to".
+Prefer: "before", "if you can't", "please let me know", "when you have a chance",
+"about", "Could you...".
+
+Tone hierarchy (always preserve):
+Grammar Fix = least amount of change.
+Native = naturalness.
+Friendly / Casual = more conversational than Native.
+Professional = more workplace-appropriate than Native, not more formal.
+Do NOT allow Friendly to become more formal than Native.
+Do NOT allow Professional to become unnecessarily formal.
+Do NOT use collocations as a way to artificially differentiate the outputs.
+""".strip()
+
+TRANSLATION_TONE_RULES = """
+Translation is NOT word-for-word translation.
+Translate the meaning, tone, naturalness, and communication style of THAT generated
+"from" (each card separately).
+
+If the source "from" is casual, the translation "to" must be casual.
+If the source "from" is professional, the translation "to" must be professional but natural.
+Grammar Fix "to" matches the min-edited source's original register — not Native's rewrite.
+
+If the source uses a natural chunk, translate the meaning naturally in the target
+language/locale instead of translating the words literally.
+
+Example:
+English: "Can you send it over when you get a chance?"
+Do NOT translate word-for-word ("send it over" / "get a chance" as calques).
+Translate it using the natural equivalent a native speaker of the target locale
+would actually use.
+
+The translation must feel like it was originally written in the target language.
+Do not preserve unnatural source-language sentence structure.
 """.strip()
 
 GERMAN_PERSIAN_RULES = """

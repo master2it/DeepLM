@@ -192,7 +192,12 @@ class PromptArchitectureTests(unittest.TestCase):
         self.assertIn("Do NOT apply this rule to Grammar Fix", system)
         self.assertIn("I hope this message finds you well", system)
         self.assertIn("make a decision", system)
-        self.assertNotIn("Slack/WhatsApp", system)
+        self.assertIn("0-2", system)
+        self.assertIn("more conversational than Native", system)
+        self.assertIn("more formal than Native", system)
+        self.assertIn("SIMPLEST natural", system)
+        self.assertIn("I would appreciate it if", system)
+        self.assertNotIn("send it over when you get a chance", system)
 
         translating, user = grammar.build_styled_translation_prompt(
             src_hint="English",
@@ -210,6 +215,10 @@ class PromptArchitectureTests(unittest.TestCase):
         self.assertIn("MINIMUM possible changes", translating)
         self.assertIn("correction layer", translating)
         self.assertIn("Independently rewrite Native", user)
+        self.assertIn("NOT word-for-word", translating)
+        self.assertIn("send it over when you get a chance", translating)
+        self.assertIn("originally written", translating)
+        self.assertIn("not word-for-word", translating)
 
 
 class ParseContractTests(unittest.TestCase):
