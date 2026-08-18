@@ -220,14 +220,31 @@ Exactly 12 objects, in the order listed above.
         return {"error": str(e)}
 
 
-def get_tense_explanation_from_ai(
+def build_tense_explanation_prompt(
     tense_name: str,
     language: str | None = None,
-    provider: str | None = None,
-    groq_api_key: str | None = None,
-    hf_api_key: str | None = None,
-) -> dict:
+    source_text: str = "",
+    example: str = "",
+) -> tuple[str, str]:
     lang = normalize_tense_language(language)
+    source = (source_text or "").strip()
+    card = (example or "").strip()
+    phrase_block = ""
+    if source or card:
+        phrase_block = (
+            "The student's original input was: "
+            f'"{source or card}".\n'
+            + (f'This tense\'s conjugated sentence was: "{card}".\n' if card else "")
+            + "Give exactly 3 everyday example sentences IN THIS TENSE that keep the same "
+            "subject and meaning (variations of that idea). Do not switch tenses. "
+            "Do not reuse the conjugated sentence as one of the three examples.\n"
+        )
+    else:
+        phrase_block = (
+            "No student sentence was provided. Give exactly 3 generic everyday examples "
+            "in this tense.\n"
+        )
+
     if lang == "German":
         key = canonical_german_tense_key(tense_name)
         label = _label_for_key(key) if key else tense_name.strip()
@@ -240,7 +257,7 @@ Explain the German tense "{label}" (canonical key: {key or "unknown"}).
 1. Explain WHEN and WHY we use it in simple, natural Persian.
 2. Mention spoken vs written usage when it matters (Perfekt vs Präteritum).
 3. Provide exactly 3 everyday German examples with English and Persian.
-
+{phrase_block}
 Output ONLY a valid JSON OBJECT:
 {{
     "explanation": "توضیح کامل فارسی...",
@@ -254,13 +271,16 @@ Do not present English continuous tenses as separate German tenses.
 If the meaning overlaps with English continuous, say German uses this tense plus context/adverbs.
 """.strip()
         user_msg = f"Explain {label} in German"
-    else:
-        system_prompt = f"""
+        if source or card:
+            user_msg += f" using the student's phrase: {source or card}"
+        return system_prompt, user_msg
+
+    system_prompt = f"""
 You are an expert English teacher explaining grammar to a Persian student.
 Explain the English tense "{tense_name}".
 1. Explain WHEN and WHY we use it in simple, natural Persian.
 2. Provide exactly 3 everyday conversational English examples with Persian translations.
-
+{phrase_block}
 Output ONLY a valid JSON OBJECT:
 {{
     "explanation": "توضیح کامل فارسی در مورد کاربرد این زمان...",
@@ -271,7 +291,30 @@ Output ONLY a valid JSON OBJECT:
     ]
 }}
 """.strip()
-        user_msg = f"Explain {tense_name} in {lang}"
+    user_msg = f"Explain {tense_name} in {lang}"
+    if source or card:
+        user_msg += f" using the student's phrase: {source or card}"
+    return system_prompt, user_msg
+
+
+def get_tense_explanation_from_ai(
+    tense_name: str,
+    language: str | None = None,
+    provider: str | None = None,
+    groq_api_key: str | None = None,
+    hf_api_key: str | None = None,
+    source_text: str = "",
+    example: str = "",
+) -> dict:
+    lang = normalize_tense_language(language)
+    system_prompt, user_msg = build_tense_explanation_prompt(
+        tense_name,
+        language=lang,
+        source_text=source_text,
+        example=example,
+    )
+    key = canonical_german_tense_key(tense_name) if lang == "German" else None
+    label = _label_for_key(key) if key else tense_name.strip()
     try:
         content, used = chat(
             [

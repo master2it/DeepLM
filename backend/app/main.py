@@ -75,6 +75,8 @@ class TensesRequest(BaseModel):
 class TenseExplainRequest(BaseModel):
     tense: str = Field(..., min_length=1)
     language: str = DEFAULT_TENSE_LANGUAGE
+    text: str = ""
+    example: str = ""
     provider: ProviderField | None = None
     groq_api_key: str | None = None
     hf_api_key: str | None = None
@@ -230,6 +232,8 @@ def tenses(req: TensesRequest, request: Request):
 
 @app.post("/api/tenses/explain")
 def tenses_explain(req: TenseExplainRequest, request: Request):
+    source = fold_user_text(req.text or "")
+    example = fold_user_text(req.example or "")
     return _run_generation(
         request,
         req.provider,
@@ -239,11 +243,15 @@ def tenses_explain(req: TenseExplainRequest, request: Request):
         parts={
             "tense": req.tense.strip(),
             "language": req.language,
+            "text": source,
+            "context": example,
             "provider": req.provider or "",
         },
         producer=lambda: get_tense_explanation_from_ai(
             req.tense.strip(),
             language=req.language,
+            source_text=source,
+            example=example,
             provider=req.provider,
             groq_api_key=req.groq_api_key,
             hf_api_key=req.hf_api_key,

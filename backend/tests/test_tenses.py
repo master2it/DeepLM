@@ -10,7 +10,11 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.tenses import canonical_german_tense_key, _normalize_items  # noqa: E402
+from app.tenses import (
+    canonical_german_tense_key,
+    _normalize_items,
+    build_tense_explanation_prompt,
+)  # noqa: E402
 
 
 class GermanTenseCanonicalTests(unittest.TestCase):
@@ -34,6 +38,38 @@ class GermanTenseCanonicalTests(unittest.TestCase):
         items = _normalize_items(raw, language="German")
         self.assertEqual([i["tense"] for i in items], ["Präsens", "Perfekt", "Futur II"])
         self.assertEqual([i["key"] for i in items], ["praesens", "perfekt", "futur_ii"])
+
+
+class ExplainPromptTests(unittest.TestCase):
+    def test_prompt_asks_for_exactly_three_examples(self):
+        system, user = build_tense_explanation_prompt("Past Simple", language="English")
+        self.assertIn("exactly 3", system)
+        self.assertIn("Past Simple", system)
+        self.assertIn("Explain Past Simple", user)
+
+    def test_prompt_includes_student_phrase(self):
+        system, user = build_tense_explanation_prompt(
+            "Past Simple",
+            language="English",
+            source_text="I did",
+            example="I did",
+        )
+        self.assertIn("exactly 3", system)
+        self.assertIn("I did", system)
+        self.assertIn("same subject and meaning", system)
+        self.assertIn("I did", user)
+
+    def test_german_prompt_includes_phrase(self):
+        system, user = build_tense_explanation_prompt(
+            "Perfekt",
+            language="German",
+            source_text="Ich arbeite",
+            example="Ich habe gearbeitet.",
+        )
+        self.assertIn("exactly 3", system)
+        self.assertIn("Ich arbeite", system)
+        self.assertIn("Ich habe gearbeitet.", system)
+        self.assertIn("Ich arbeite", user)
 
 
 if __name__ == "__main__":

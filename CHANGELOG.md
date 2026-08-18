@@ -28,6 +28,13 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+### 2026-08-18 — Two-column tense cards with three click examples
+- **Type:** patch
+- **Version:** Unreleased
+- **Summary:** Tense results show two cards per row. Clicking a card explains that tense and lists three example sentences matching the user's phrase. Cache schema 18.
+- **Why:** feature
+- **Files:** `frontend/src/components/tenses-generator.tsx`, `frontend/src/lib/api.ts`, `backend/app/tenses.py`, `backend/app/main.py`, `backend/app/cache.py`, `backend/tests/test_tenses.py`, `backend/tests/test_cache.py`
+
 ### 2026-08-18 — Collocation intensity + tone-preserving translation
 - **Type:** patch
 - **Version:** Unreleased

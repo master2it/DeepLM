@@ -47,6 +47,27 @@ class CacheKeyTests(unittest.TestCase):
         self.assertNotEqual(a, b)
         self.assertNotEqual(a, c)
 
+    def test_explain_key_uses_user_text(self):
+        a = make_cache_key(
+            "tenses_explain",
+            {
+                "tense": "Past Simple",
+                "language": "English",
+                "text": "I did",
+                "provider": "groq",
+            },
+        )
+        b = make_cache_key(
+            "tenses_explain",
+            {
+                "tense": "Past Simple",
+                "language": "English",
+                "text": "I work",
+                "provider": "groq",
+            },
+        )
+        self.assertNotEqual(a, b)
+
     def test_does_not_embed_groq_key(self):
         key = make_cache_key(
             "grammar",

@@ -321,15 +321,24 @@ export async function postTenses(
   return res.json();
 }
 
+export type TenseExample = {
+  text?: string;
+  en?: string;
+  english?: string;
+  fa: string;
+};
+
 export async function postTenseExplain(
   tense: string,
   provider: ProviderId,
   groqApiKey?: string,
   language: TenseLanguage = "English",
-  hfApiKey?: string
+  hfApiKey?: string,
+  text?: string,
+  example?: string
 ): Promise<{
   explanation?: string;
-  examples?: { text?: string; en?: string; english?: string; fa: string }[];
+  examples?: TenseExample[];
   provider?: string;
 }> {
   const res = await fetch(`${API_BASE}/api/tenses/explain`, {
@@ -338,6 +347,8 @@ export async function postTenseExplain(
     body: JSON.stringify({
       tense,
       language,
+      text: text?.trim() || undefined,
+      example: example?.trim() || undefined,
       provider,
       groq_api_key: groqApiKey?.trim() || undefined,
       hf_api_key: hfApiKey?.trim() || undefined,

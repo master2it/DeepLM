@@ -31,6 +31,7 @@ import {
   type ProviderId,
   type TenseItem,
   type TenseLanguage,
+  type TenseExample,
 } from "@/lib/api";
 import {
   formatHistoryTime,
@@ -66,6 +67,7 @@ export function TensesGenerator({
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoTitle, setInfoTitle] = useState("");
   const [infoBody, setInfoBody] = useState("");
+  const [infoExamples, setInfoExamples] = useState<TenseExample[]>([]);
   const [infoLoading, setInfoLoading] = useState(false);
   const [history, setHistory] = useState<TensesHistoryItem[]>([]);
 
@@ -131,29 +133,27 @@ export function TensesGenerator({
     }
   }
 
-  async function openInfo(tense: string) {
-    setInfoTitle(tense);
+  async function openInfo(item: TenseItem) {
+    setInfoTitle(item.tense);
     setInfoOpen(true);
     setInfoLoading(true);
     setInfoBody("");
+    setInfoExamples([]);
     try {
       const data = await postTenseExplain(
-        tense,
+        item.tense,
         provider,
         groqApiKey,
         language,
-        hfApiKey
+        hfApiKey,
+        text.trim(),
+        item.text
       );
-      const examples = (data.examples || [])
-        .map((ex, i) => {
-          const de = ex.text || ex.en || "";
-          const en = ex.english ? `\n${ex.english}` : "";
-          return `${i + 1}. ${de}${en}\n${ex.fa}`;
-        })
-        .join("\n\n");
-      setInfoBody(`${data.explanation || ""}\n\n${examples}`.trim());
+      setInfoBody((data.explanation || "").trim());
+      setInfoExamples(data.examples || []);
     } catch (err) {
       setInfoBody(err instanceof Error ? err.message : "Failed to load explanation");
+      setInfoExamples([]);
     } finally {
       setInfoLoading(false);
     }
@@ -240,15 +240,21 @@ export function TensesGenerator({
           No tense cards were returned. Try again with a short phrase.
         </p>
       )}
-      <div
-        className={
-          language === "German"
-            ? "grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-            : "grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
-        }
-      >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {items.map((item) => (
-          <Card key={item.key || item.tense}>
+          <Card
+            key={item.key || item.tense}
+            role="button"
+            tabIndex={0}
+            className="cursor-pointer transition-colors hover:border-zinc-500"
+            onClick={() => openInfo(item)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openInfo(item);
+              }
+            }}
+          >
             <CardHeader className="flex-row items-start justify-between space-y-0 gap-2">
               <CardTitle className="min-w-0 flex-1 break-words pr-2 text-sm sm:text-base">
                 {item.tense}
@@ -258,7 +264,11 @@ export function TensesGenerator({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-blue-400"
-                onClick={() => openInfo(item.tense)}
+                aria-label={`Explain ${item.tense}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openInfo(item);
+                }}
               >
                 <Info className="h-4 w-4" />
               </Button>
@@ -284,9 +294,41 @@ export function TensesGenerator({
           <DialogHeader>
             <DialogTitle>Tense explanation: {infoTitle}</DialogTitle>
           </DialogHeader>
-          <p className="whitespace-pre-wrap text-sm text-zinc-300" dir="auto">
-            {infoLoading ? "Getting details…" : infoBody}
-          </p>
+          {infoLoading ? (
+            <p className="text-sm text-zinc-300">Getting details…</p>
+          ) : (
+            <div className="space-y-4 text-sm text-zinc-300">
+              {infoBody && (
+                <p className="whitespace-pre-wrap" dir="auto">
+                  {infoBody}
+                </p>
+              )}
+              {infoExamples.length > 0 && (
+                <div className="space-y-3">
+                  <p className="font-medium text-zinc-100">Examples</p>
+                  <ol className="list-decimal space-y-3 ps-5">
+                    {infoExamples.map((ex, i) => (
+                      <li key={i} className="space-y-1">
+                        <p className="break-words text-zinc-100" dir="ltr">
+                          {ex.text || ex.en || ""}
+                        </p>
+                        {ex.english && (
+                          <p className="break-words text-zinc-300" dir="ltr">
+                            {ex.english}
+                          </p>
+                        )}
+                        {ex.fa && (
+                          <p className="break-words text-zinc-400" dir="rtl">
+                            {ex.fa}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
