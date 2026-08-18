@@ -220,7 +220,7 @@ def get_styled_translations_from_ai(
                 {"role": "user", "content": user_msg},
             ],
             temperature=0.15,
-            max_tokens=8192,
+            max_tokens=4096,
             provider=provider,
             groq_api_key=groq_api_key,
             hf_api_key=hf_api_key,

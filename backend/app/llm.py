@@ -175,24 +175,41 @@ def _groq_chat(
     if not key:
         raise LLMError("GROQ_API_KEY is not configured.")
     url = settings.groq_base_url.rstrip("/") + "/chat/completions"
-    payload = {
-        "model": settings.groq_model,
-        "messages": messages,
-        "temperature": temperature,
-        "max_tokens": max_tokens,
-    }
+    cap = max(256, int(getattr(settings, "groq_max_tokens", 4096) or 4096))
+    tokens = min(max(1, int(max_tokens)), cap)
     headers = {
         "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
     }
-    with httpx.Client(timeout=settings.ollama_timeout_seconds) as client:
-        response = client.post(url, json=payload, headers=headers)
-        response.raise_for_status()
-        data = response.json()
-    content = _hf_chat_content(data)
-    if not content.strip():
-        raise LLMError("Groq returned empty content.")
-    return content
+    attempts: list[int] = []
+    for size in (tokens, min(2048, tokens), min(1024, tokens)):
+        if size not in attempts:
+            attempts.append(size)
+    last_response: httpx.Response | None = None
+    for attempt in attempts:
+        payload = {
+            "model": settings.groq_model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": attempt,
+        }
+        with httpx.Client(timeout=settings.ollama_timeout_seconds) as client:
+            last_response = client.post(url, json=payload, headers=headers)
+        if last_response.status_code == 413 and attempt != attempts[-1]:
+            logger.warning(
+                "Groq 413 Payload Too Large with max_tokens=%s; retrying smaller",
+                attempt,
+            )
+            continue
+        last_response.raise_for_status()
+        data = last_response.json()
+        content = _hf_chat_content(data)
+        if not content.strip():
+            raise LLMError("Groq returned empty content.")
+        return content
+    if last_response is not None:
+        last_response.raise_for_status()
+    raise LLMError("Groq request failed.")
 
 
 def chat(

@@ -32,6 +32,13 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [1.5.0] — 2026-08-18 — minor
 
+### 2026-08-18 — Groq 413 payload limit
+- **Type:** patch
+- **Version:** 1.5.0
+- **Summary:** Groq chat caps max_tokens at 4096 and retries smaller (2048, then 1024) on HTTP 413 so long Translate requests do not fail.
+- **Why:** bug
+- **Files:** `backend/app/llm.py`, `backend/app/grammar.py`, `backend/app/config.py`, `.env.example`
+
 ### 2026-08-18 — HF server token daily limit 50
 - **Type:** patch
 - **Version:** 1.5.0

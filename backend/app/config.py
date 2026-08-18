@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-120b"
     groq_base_url: str = "https://api.groq.com/openai/v1"
+    groq_max_tokens: int = 4096
     cors_origins: str = (
         "http://localhost:3000,http://127.0.0.1:3000,"
         "https://deep-lm.vercel.app"
