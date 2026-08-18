@@ -50,8 +50,16 @@ class Settings(BaseSettings):
         "https://deep-lm.vercel.app"
     )
     cors_origin_regex: str = r"https://([a-z0-9-]+\.)*(vercel\.app|up\.railway\.app)"
-    redis_url: str = ""
-    redis_private_url: str = ""
+    redis_url: str = Field(
+        default="",
+        validation_alias=AliasChoices("REDIS_URL", "redis_url"),
+    )
+    redis_private_url: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "REDIS_PRIVATE_URL", "redis_private_url"
+        ),
+    )
     redis_host: str = Field(
         default="",
         validation_alias=AliasChoices("REDISHOST", "REDIS_HOST", "redis_host"),
@@ -72,6 +80,7 @@ class Settings(BaseSettings):
     )
     redis_ttl_seconds: int = 43200
     hf_default_daily_limit: int = 30
+    groq_default_daily_limit: int = 30
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -79,7 +88,7 @@ class Settings(BaseSettings):
 
     @property
     def resolved_redis_url(self) -> str:
-        for candidate in (self.redis_url, self.redis_private_url):
+        for candidate in (self.redis_private_url, self.redis_url):
             if _usable_redis_url(candidate):
                 return candidate.strip()
         host = self.redis_host.strip()

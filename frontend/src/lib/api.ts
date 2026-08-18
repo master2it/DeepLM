@@ -82,6 +82,7 @@ export type HealthPayload = {
   providers: ProviderInfo[];
   default_provider: ProviderId;
   hf_default_daily_limit?: number;
+  groq_default_daily_limit?: number;
   redis?: boolean;
 };
 
@@ -156,20 +157,31 @@ function apiHeaders(json = false): HeadersInit {
   return headers;
 }
 
-export type LimitsPayload = {
+export type ProviderLimit = {
   limit: number;
   used: number;
   remaining: number;
-  resets_at: string;
   using_default_key: boolean;
-  redis: boolean;
 };
 
-export async function fetchLimits(ownKey: boolean): Promise<LimitsPayload> {
-  const res = await fetch(
-    `${API_BASE}/api/limits?own_key=${ownKey ? "true" : "false"}`,
-    { headers: apiHeaders() }
-  );
+export type LimitsPayload = {
+  resets_at: string;
+  redis: boolean;
+  huggingface: ProviderLimit;
+  groq: ProviderLimit;
+};
+
+export async function fetchLimits(
+  ownHfKey: boolean,
+  ownGroqKey: boolean
+): Promise<LimitsPayload> {
+  const params = new URLSearchParams({
+    own_hf_key: ownHfKey ? "true" : "false",
+    own_groq_key: ownGroqKey ? "true" : "false",
+  });
+  const res = await fetch(`${API_BASE}/api/limits?${params}`, {
+    headers: apiHeaders(),
+  });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }

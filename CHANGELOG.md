@@ -28,6 +28,20 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+### 2026-08-18 — Prefer Railway REDIS_PRIVATE_URL
+- **Type:** patch
+- **Version:** Unreleased
+- **Summary:** Redis connection prefers REDIS_PRIVATE_URL (Railway private network) over REDIS_URL.
+- **Why:** deploy
+- **Files:** `backend/app/config.py`, `railway.toml`
+
+### 2026-08-18 — Groq default-key daily limit
+- **Type:** minor
+- **Version:** Unreleased
+- **Summary:** Empty Groq key in Settings uses server GROQ_API_KEY with a 30/day cap (browser id + IP, Redis), same as Hugging Face. Limits tab shows both HF and Groq usage. Own Groq key is uncapped.
+- **Why:** feature
+- **Files:** `backend/app/quota.py`, `backend/app/main.py`, `frontend/src/components/limits-panel.tsx`
+
 ### 2026-08-18 — Hugging Face key and daily default-key limits
 - **Type:** minor
 - **Version:** Unreleased

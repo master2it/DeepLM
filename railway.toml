@@ -1,6 +1,7 @@
-# On the API service, share Redis plugin vars (do not only set them on Redis):
-# REDIS_URL, REDISHOST, REDISPORT, REDISUSER, REDIS_PASSWORD
-# REDISHOST is RAILWAY_PRIVATE_DOMAIN — API and Redis must be in the same project.
+# On the FastAPI API service (not the Redis plugin), add:
+#   REDIS_PRIVATE_URL = ${{ Redis.REDIS_PRIVATE_URL }}
+# Use the Redis service name from the Railway canvas if it is not "Redis".
+# Redeploy the API after saving. GET /health should show "redis": true.
 
 [build]
 builder = "RAILPACK"

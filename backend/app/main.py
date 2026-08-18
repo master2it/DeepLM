@@ -24,7 +24,12 @@ from app.cache import cached_result, redis_reachable
 from app.changelog import load_changelog
 from app.grammar import get_styled_translations_from_ai
 from app.llm import providers_status
-from app.quota import assert_can_generate, consume, snapshot, uses_default_hf
+from app.quota import (
+    assert_can_generate,
+    consume,
+    default_quota_kind,
+    snapshot,
+)
 from app.tenses import get_tense_explanation_from_ai, get_tenses_from_ai
 from app.version import APP_VERSION
 
@@ -84,6 +89,7 @@ def health():
         "groq_model": by_id["groq"]["model"],
         "providers": providers,
         "hf_default_daily_limit": get_settings().hf_default_daily_limit,
+        "groq_default_daily_limit": get_settings().groq_default_daily_limit,
         "redis": redis_reachable(),
     }
 
@@ -119,28 +125,35 @@ def _run_generation(
     http_request: Request,
     provider: str | None,
     hf_api_key: str | None,
+    groq_api_key: str | None,
     *,
     kind: str | None,
     parts: dict | None,
     producer,
 ):
-    default = uses_default_hf(provider, hf_api_key)
-    if default:
-        assert_can_generate(http_request)
+    quota_kind = default_quota_kind(provider, hf_api_key, groq_api_key)
+    if quota_kind:
+        assert_can_generate(http_request, quota_kind)
     if kind and parts is not None:
         result = cached_result(kind, parts, producer)
     else:
         result = producer()
     if isinstance(result, dict) and result.get("error"):
         raise HTTPException(status_code=502, detail=result["error"])
-    if default and not (isinstance(result, dict) and result.get("cached")):
-        consume(http_request)
+    if quota_kind and not (isinstance(result, dict) and result.get("cached")):
+        consume(http_request, quota_kind)
     return result
 
 
 @app.get("/api/limits")
-def api_limits(request: Request, own_key: bool = False):
-    return snapshot(request, using_default_key=not own_key)
+def api_limits(
+    request: Request,
+    own_hf_key: bool = False,
+    own_groq_key: bool = False,
+):
+    return snapshot(
+        request, own_hf_key=own_hf_key, own_groq_key=own_groq_key
+    )
 
 
 @app.post("/api/grammar")
@@ -149,6 +162,7 @@ def grammar(req: GrammarRequest, request: Request):
         request,
         req.provider,
         req.hf_api_key,
+        req.groq_api_key,
         kind="grammar",
         parts={
             "text": req.text.strip(),
@@ -175,6 +189,7 @@ def tenses(req: TensesRequest, request: Request):
         request,
         req.provider,
         req.hf_api_key,
+        req.groq_api_key,
         kind="tenses",
         parts={
             "text": req.text.strip(),
@@ -197,6 +212,7 @@ def tenses_explain(req: TenseExplainRequest, request: Request):
         request,
         req.provider,
         req.hf_api_key,
+        req.groq_api_key,
         kind=None,
         parts=None,
         producer=lambda: get_tense_explanation_from_ai(

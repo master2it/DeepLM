@@ -40,6 +40,16 @@ class RedisUrlTests(unittest.TestCase):
             "redis://default:secret@redis.railway.internal:6379/0",
         )
 
+    def test_prefers_private_url(self):
+        settings = Settings(
+            redis_url="redis://public.example:6379/0",
+            redis_private_url="redis://default:secret@redis.railway.internal:6379/0",
+        )
+        self.assertEqual(
+            settings.resolved_redis_url,
+            "redis://default:secret@redis.railway.internal:6379/0",
+        )
+
 
 class StripThinkingTests(unittest.TestCase):
     def test_strips_think_block(self):

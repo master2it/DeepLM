@@ -139,6 +139,8 @@ export default function HomePage() {
           <LimitsPanel
             hfApiKey={hfApiKey}
             hfConfigured={Boolean(health?.hf_configured)}
+            groqApiKey={groqApiKey}
+            groqConfigured={Boolean(health?.groq_configured)}
           />
         </TabsContent>
         <TabsContent value="changelog">

@@ -18,7 +18,7 @@ const OPTIONS: { id: ProviderId; title: string; hint: string }[] = [
   {
     id: "groq",
     title: "Groq",
-    hint: "Cloud chat. Paste your Groq API key below (or set GROQ_API_KEY on the server).",
+    hint: "Cloud chat. Paste your Groq API key below, or leave empty to use the server GROQ_API_KEY (30 generations per UTC day).",
   },
 ];
 
@@ -145,8 +145,9 @@ export function SettingsPanel({
             >
               console.groq.com/keys
             </a>
-            . Server <code className="text-zinc-300">GROQ_API_KEY</code> is used
-            if this field is empty.
+            . Leave empty to use the server{" "}
+            <code className="text-zinc-300">GROQ_API_KEY</code> (30 generations
+            per UTC day — see the Limits tab).
           </p>
         </div>
       )}

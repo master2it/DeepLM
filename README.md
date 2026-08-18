@@ -20,12 +20,13 @@ Ollama must listen on port `11434`.
 copy .env.example .env
 ```
 
-Optional Hugging Face key on the server (capped at 30 generations per UTC day when visitors do not paste their own). Groq and HF keys can also be pasted in Settings:
+Optional Hugging Face and Groq keys on the server (each capped at 30 generations per UTC day when visitors do not paste their own). Keys can also be pasted in Settings:
 
 ```env
 HF_TOKEN=hf_your_token_here
 GROQ_API_KEY=gsk_your_key_here
 HF_DEFAULT_DAILY_LIMIT=30
+GROQ_DEFAULT_DAILY_LIMIT=30
 ```
 
 
@@ -51,9 +52,15 @@ REDIS_URL=
 REDIS_TTL_SECONDS=43200
 ```
 
-Add a **Redis** plugin on the Railway project (same environment as the API). Railway injects `REDIS_URL` (and often `REDIS_PRIVATE_URL`). Grammar and tenses responses are cached for 12 hours; Groq keys are never stored. `GET /health` includes `"redis": true` when the cache is reachable.
+Add a **Redis** plugin on the same Railway project/environment as the API. On the **API service** (not the Redis plugin), add a variable named exactly `REDIS_PRIVATE_URL` with value:
 
-Local Redis is in `docker-compose.yml`. `railway.toml` `[environments.local.variables]` sets `REDIS_URL=redis://127.0.0.1:6379/0` for `railway run`.
+```text
+${{ Redis.REDIS_PRIVATE_URL }}
+```
+
+If the plugin is not named `Redis` in the canvas, use that service name instead of `Redis`. Redeploy the API. `GET /health` must show `"redis": true`. Grammar/tenses cache and HF/Groq daily limits need Redis. Groq/HF keys are never stored in Redis.
+
+Local Redis is in `docker-compose.yml`. `railway.toml` `[environments.local.variables]` sets `REDIS_URL=redis://127.0.0.1:6379/0` for `railway run`. Private Railway URLs do not work from your laptop.
 
 `railpack.json` starts `uvicorn` from `backend/`. Do not set the service root directory to `frontend/`, and do not set a custom `start.sh` unless that file exists.
 
@@ -136,7 +143,7 @@ python -m unittest tests.test_config tests.test_translation_quality -v
 - **Grammar/Spell Fixer** — default tab; default pair English → Persian; German and other languages; three styles (German ↔ Persian uses du/Sie and تو/شما)
 - **Tenses** — English: 12 tenses; German: 6 tenses (Präsens, Präteritum, Perfekt, Plusquamperfekt, Futur I, Futur II); Persian glosses on every card
 - **Settings** — choose Ollama / Hugging Face / Groq; paste a Groq or Hugging Face API key (saved in the browser)
-- **Limits** — default Hugging Face key usage (30 per UTC day, browser id + IP); own HF token is uncapped
+- **Limits** — default Hugging Face and Groq key usage (30 per UTC day each, browser id + IP); own pasted keys are uncapped
 - **Changelog** — Versions tab lists releases from `CHANGELOG.md`
 - **PWA** — installable app (manifest, service worker, Install button)
 
