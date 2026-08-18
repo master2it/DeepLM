@@ -10,6 +10,7 @@ VERSION_FILE = ROOT / "VERSION"
 BACKEND_FILE = ROOT / "backend" / "app" / "version.py"
 FRONTEND_TS = ROOT / "frontend" / "src" / "lib" / "version.ts"
 PACKAGE_JSON = ROOT / "frontend" / "package.json"
+ROOT_PACKAGE_JSON = ROOT / "package.json"
 
 
 def bump_patch(version: str) -> str:
@@ -35,6 +36,11 @@ def main() -> None:
     pkg["version"] = nxt
     PACKAGE_JSON.write_text(
         json.dumps(pkg, indent=2) + "\n", encoding="utf-8"
+    )
+    root_pkg = json.loads(ROOT_PACKAGE_JSON.read_text(encoding="utf-8"))
+    root_pkg["version"] = nxt
+    ROOT_PACKAGE_JSON.write_text(
+        json.dumps(root_pkg, indent=2) + "\n", encoding="utf-8"
     )
     print(nxt)
 

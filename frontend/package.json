@@ -1,7 +1,7 @@
 {
   "name": "deeplm-web",
-  "description": "DeepLM Language Model Web Interface",
-  "homepage": "https://github.com/master2it/DeepLM",
+  "description": "DeepLM web UI: grammar fixer, tenses, and PWA. Next.js App Router.",
+  "homepage": "https://deep-lm.vercel.app",
   "repository": {
     "type": "git",
     "url": "https://github.com/master2it/DeepLM.git"
@@ -12,19 +12,19 @@
     "url": "https://github.com/master2it/DeepLM/issues"
   },
   "keywords": [
-    "DeepLM",
-    "Translation",
-    "Language Model",
-    "Web Interface",
-    "Grammar",
-    "Spell Checker",
-    "Tenses",
-    "Verb Conjugation",
-    "Noun Conjugation",
-    "Adjective Conjugation",
-    "Adverb Conjugation",
-    "Preposition Conjugation",
-    "Article Conjugation"
+    "deeplm",
+    "grammar",
+    "spell-checker",
+    "translation",
+    "tenses",
+    "persian",
+    "german",
+    "ollama",
+    "huggingface",
+    "groq",
+    "nextjs",
+    "pwa",
+    "language-learning"
   ],
   "contributors": [
     {
