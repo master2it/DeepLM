@@ -25,9 +25,13 @@ export type GrammarResult = {
   subject_reading?: string;
   grammar_notes?: string;
   provider?: string;
-  friendly_casual: StylePair;
-  professional_formal: StylePair;
-  everyday_neutral: StylePair;
+  native?: StylePair;
+  friendly?: StylePair;
+  professional?: StylePair;
+  literal?: StylePair;
+  friendly_casual?: StylePair;
+  professional_formal?: StylePair;
+  everyday_neutral?: StylePair;
 };
 
 export type GermanTense =

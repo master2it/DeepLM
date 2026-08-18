@@ -75,20 +75,17 @@ class PromptArchitectureTests(unittest.TestCase):
             tgt="English",
             wants_translation=True,
         )
-        self.assertIn("canonical_meaning", system)
-        self.assertIn("intended_meaning", system)
-        self.assertIn("best_version", system)
-        self.assertIn("grammar-only", system)
-        self.assertIn("Grammar notes", system)
-        self.assertIn('"original fragment"', system)
-        self.assertIn("Corrected sentence", user)
-        self.assertIn("grammar-enhanced SOURCE", system)
-        self.assertIn("Never put English in best_version", system)
-        self.assertIn("do not translate best_version", user)
+        self.assertIn("native", system)
+        self.assertIn("friendly", system)
+        self.assertIn("professional", system)
+        self.assertIn("literal", system)
+        self.assertIn("Never translate word-for-word", system)
         self.assertIn("Do not invent explicit subjects", system)
         self.assertIn("Never flatten", system)
         self.assertIn("American English", system)
+        self.assertIn("Native, Friendly", user)
         self.assertIn("{text}", user)
+        self.assertNotIn("Grammar notes", system)
 
     def test_german_persian_prompt_both_directions(self):
         de_fa, user_de = grammar.build_styled_translation_prompt(
@@ -107,7 +104,7 @@ class PromptArchitectureTests(unittest.TestCase):
             wants_translation=True,
         )
         self.assertIn("German ↔ Persian", fa_de)
-        self.assertIn("natural German", fa_de)
+        self.assertIn("natural contemporary German", fa_de)
         self.assertIn("es wird fertig", fa_de)
         self.assertIn("Persian", user_fa)
         self.assertIn("German", user_fa)
@@ -126,35 +123,37 @@ class ParseContractTests(unittest.TestCase):
     def test_parse_preserves_ui_keys(self):
         raw = {
             "detected_lang": "Persian",
-            "intended_meaning": "The thing will be ready next week.",
-            "best_version": "It will be ready next week.",
-            "canonical_meaning": "It will be ready next week.",
-            "grammar_notes": "",
-            "friendly_casual": {"from": "x", "to": "It'll be ready next week."},
-            "professional_formal": {"from": "x", "to": "It will be ready next week."},
-            "everyday_neutral": {"from": "x", "to": "It will be ready next week."},
+            "native": {"from": "هفته آینده آماده می‌شه", "to": "It'll be ready next week."},
+            "friendly": {"from": "هفته آینده آماده می‌شه", "to": "It'll be ready next week."},
+            "professional": {
+                "from": "هفته آینده آماده می‌شه",
+                "to": "It will be ready next week.",
+            },
+            "literal": {"from": "هفته آینده آماده میشه", "to": "Next week it becomes ready."},
         }
         parsed = grammar.parse_styled_translation_response(
             raw, src_hint="Persian", tgt="English", wants_translation=True
         )
         self.assertEqual(parsed["from_lang"], "Persian")
         self.assertTrue(parsed["wants_translation"])
-        self.assertEqual(parsed["best_version"], "It will be ready next week.")
-        self.assertEqual(parsed["intended_meaning"], "The thing will be ready next week.")
+        self.assertEqual(parsed["native"]["to"], "It'll be ready next week.")
+        self.assertEqual(parsed["friendly"]["to"], parsed["friendly_casual"]["to"])
 
     def test_best_version_falls_back_to_canonical(self):
         raw = {
             "detected_lang": "English",
             "canonical_meaning": "I agree with you.",
-            "friendly_casual": {"from": "I agree with you.", "to": ""},
-            "professional_formal": {"from": "I agree with you.", "to": ""},
-            "everyday_neutral": {"from": "I agree with you.", "to": ""},
+            "native": {"from": "I agree with you.", "to": ""},
+            "friendly": {"from": "I agree with you.", "to": ""},
+            "professional": {"from": "I agree with you.", "to": ""},
+            "literal": {"from": "I agree with you.", "to": ""},
         }
         parsed = grammar.parse_styled_translation_response(
             raw, src_hint="English", tgt="English", wants_translation=False
         )
         self.assertEqual(parsed["best_version"], "I agree with you.")
         self.assertEqual(parsed["canonical_meaning"], "I agree with you.")
+        self.assertEqual(parsed["native"]["from"], "I agree with you.")
 
 
 class MockedPipelineTests(unittest.TestCase):
@@ -200,7 +199,7 @@ class MockedPipelineTests(unittest.TestCase):
         self.assertFalse(
             grammar.flagged_invented_ready_subject(PERSIAN_READY_PICKUP, result)
         )
-        self.assertIn("pick it up", result["friendly_casual"]["to"].lower())
+        self.assertIn("pick it up", result["friendly"]["to"].lower())
         self.assertEqual(result["provider"], "ollama")
 
     def test_semantic_expectations_documented_cases(self):

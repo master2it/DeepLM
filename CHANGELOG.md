@@ -28,6 +28,13 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+### 2026-08-18 — Native editor: Native / Friendly / Professional / Literal
+- **Type:** minor
+- **Version:** Unreleased
+- **Summary:** Translate uses a native-localization prompt and returns Native, Friendly, Professional, and Literal only (silent grammar; no notes).
+- **Why:** feature
+- **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`, `frontend/src/components/grammar-fixer.tsx`, `frontend/src/lib/api.ts`
+
 ### 2026-08-18 — Corrected sentence stays in From language
 - **Type:** patch
 - **Version:** Unreleased

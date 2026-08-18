@@ -44,61 +44,55 @@ TENSE_COUNTS = {
 }
 
 STYLE_VARIANTS = (
-    ("Friendly / Casual", "friendly_casual"),
-    ("Professional / Formal", "professional_formal"),
-    ("Everyday / Neutral", "everyday_neutral"),
+    ("Native", "native"),
+    ("Friendly", "friendly"),
+    ("Professional", "professional"),
+    ("Literal", "literal"),
+)
+LEGACY_STYLE_KEYS = (
+    "friendly_casual",
+    "professional_formal",
+    "everyday_neutral",
 )
 
 TEACHER_EDITOR_INSTRUCTION = """
-You are a bilingual language teacher, editor, and native-speaker rewriter.
-Your job is NOT a grammar-only patch. Infer what the writer meant to say, then
-produce the sentence a careful native speaker would actually use.
+You are an expert native-language editor and localization specialist.
 
-Rules:
-- Do not reuse or rely on previous sentences. Each message is independent.
-- Only work on the text in this turn.
-- Infer intended meaning from broken grammar, missing words, L2 word order, and
-  literal translations. Then rewrite with best practices of the target language
-  (collocations, articles, prepositions, natural word order, idiom).
-- Do not invent new facts (names, times, objects, numbers) that are not implied.
-- Keep the original structure and format (paragraphs, line breaks, greetings, titles, lists).
-- Stay around B2 unless the source is more advanced.
-""".strip()
+Your primary goal is NOT to produce grammatically perfect textbook language.
+Your goal is to make every sentence sound like it was naturally written by an
+educated native speaker living in that country today.
 
-INTENT_AND_PRACTICE_RULES = """
-Intent first, then native rewrite (mandatory):
-- Ask internally: "What was this person trying to communicate?" Put that in intended_meaning
-  (plain, one or two sentences, in the output language used for canonical_meaning).
-- best_version / canonical_meaning is the grammar-enhanced INPUT in the SOURCE (From) language.
-  Fix grammar, agreement, articles, and unidiomatic source wording. Do NOT translate it.
-  Do NOT restyle it into Friendly / Formal / Neutral — one improved original only.
-- Grammar-only edits are insufficient when the source is understandable but unidiomatic
-  (wrong preposition, calque, odd word order). Improve the source the way a teacher would.
-- Fix: articles, tense choice, aspect, agreement, prepositions, particles, politeness,
-  collocations, and typical native alternatives.
-- Examples of the required leap (do this class of rewrite, not these exact strings):
-  "I am agree" → "I agree"; "I very like this" → "I like this a lot";
-  "make a photo" → "take a photo"; "explain me this" → "explain this to me".
-- "from" = the same grammar-enhanced source as best_version (identical on all three styles
-  when translating). Never copy the broken input when it is wrong.
-- "to" = translation of that enhanced source in that style (Friendly / Formal / Neutral).
-  Style changes belong only in "to", not in the source.
-- Output layout: Corrected sentence (From language), then each card shows enhanced From
-  text and the translation below, then Grammar notes.
-""".strip()
+General rules:
+- Never translate word-for-word.
+- Preserve the original meaning, tone, and intent.
+- Rewrite naturally whenever a native speaker would.
+- Prioritize natural phrasing over literal accuracy.
+- Remove awkward constructions, unnecessary words, and AI-like wording.
+- Avoid textbook grammar if native speakers wouldn't normally say it that way.
+- Use contractions whenever natural (English: I'm, don't, it's, we'd).
+- Prefer everyday vocabulary over formal vocabulary unless the original text is formal.
+- Preserve humor, emotion, sarcasm, and personality.
+- If a sentence sounds like Google Translate, rewrite it completely.
+- Never produce robotic or overly polished language.
+- Make the result indistinguishable from something a local would write.
+- Correct grammar, punctuation, word order, prepositions, articles, tense, and spelling silently.
+- Do not mention what was changed. Do not explain grammar. Do not apologize.
+- Do not say "Here's the corrected version."
 
-GRAMMAR_NOTES_RULES = """
-Grammar notes (mandatory whenever the input is not already native):
-- Always fill grammar_notes when you changed wording, grammar, agreement, punctuation, or idiom.
-- Use this exact pattern, one issue per line (use \\n between lines):
-  "original fragment" → "corrected fragment". Short reason.
-- Quote the original wording, then an arrow, then the native fix, then why.
-- Cover grammar AND usage (capitalization of product names, collocations, articles, number agreement).
-- If the input is already correct, set grammar_notes to "".
-- Example shape (do not copy unless the input matches):
-  "has been tested" → "tested" or "that Dustin tested". The original passive construction is incorrect here.\\n
-  "its working" → "they're working" because you're referring to channels (plural).\\n
-  "re-run celery" → "rerun the Celery tasks" is more natural and uses the proper capitalization for Celery.
+Localization:
+- Adapt expressions for the target country.
+- English (US): "I am going to" → "I'm gonna" (casual Native/Friendly only);
+  "I do not know" → "I don't know"; "I have no idea" not "I do not have any idea."
+- German: natural spoken German, not textbook translations. Common expressions Germans actually use.
+- French: idiomatic French. Avoid literal English sentence structure.
+- Spanish: country-appropriate, natural spoken language.
+- Persian: contemporary everyday Persian, not stiff literary calques.
+
+Output versions (JSON fields below — no markdown headings in the reply):
+- native: exactly how a native speaker would naturally say it.
+- friendly: more relaxed and conversational.
+- professional: natural business/workplace version (not stiff; still something a local would write at work).
+- literal: a close translation preserving the original wording (this is the only place to stay close to the source words).
 """.strip()
 
 GERMAN_PERSIAN_RULES = """
@@ -111,18 +105,22 @@ German ↔ Persian (mandatory when either language is German and the other is Pe
 - German "es wird fertig" / "es ist nächste Woche soweit" → Persian "آماده می‌شه / آماده می‌شود", NOT "من آماده می‌شم".
 - German separable verbs, compound nouns, and modal verbs must be rendered idiomatically in Persian (e.g. abholen → آمدن و گرفتن / برداشتن).
 - Persian pickup "می‌تونی بیای بگیری" → German "du kannst es abholen" / "Sie können es abholen", not a stiff literal.
-- Keep tense, time words, and who/what/when identical across all three styles.
-- Do not mix du and Sie inside one style variant.
+- Keep tense, time words, and who/what/when identical across Native, Friendly, Professional, and Literal.
+- Native/Friendly German: du if the source is informal; Professional: Sie. Do not mix du and Sie in one version.
 """.strip()
 
 def native_target_label(tgt: str) -> str:
     if tgt == "English":
-        return "natural American English (B2)"
+        return "natural contemporary American English (how a local writes today)"
     if tgt == "German":
-        return "natural German (B2)"
+        return "natural contemporary German (how a local writes today)"
     if tgt == "Persian":
-        return "natural contemporary Persian"
-    return f"natural {tgt} (B2)"
+        return "natural contemporary Persian (how a local writes today)"
+    if tgt == "French":
+        return "natural contemporary French (how a local writes today)"
+    if tgt == "Spanish":
+        return "natural contemporary Spanish (how a local writes today)"
+    return f"natural contemporary {tgt} (how a local writes today)"
 
 
 SEMANTIC_ACCURACY_RULES = """

@@ -35,10 +35,27 @@ import {
 } from "@/lib/search-history";
 
 const STYLE_KEYS = [
-  { n: 1, key: "friendly_casual" as const, label: "Friendly / Casual" },
-  { n: 2, key: "professional_formal" as const, label: "Professional / Formal" },
-  { n: 3, key: "everyday_neutral" as const, label: "Everyday / Neutral" },
+  { key: "native" as const, label: "Native" },
+  { key: "friendly" as const, label: "Friendly" },
+  { key: "professional" as const, label: "Professional" },
+  { key: "literal" as const, label: "Literal" },
 ];
+
+function stylePair(
+  result: GrammarResult,
+  key: (typeof STYLE_KEYS)[number]["key"]
+): { from: string; to: string } {
+  const direct = result[key];
+  if (direct?.from || direct?.to) return direct;
+  if (key === "native") {
+    return result.everyday_neutral || { from: result.best_version || "", to: "" };
+  }
+  if (key === "friendly") return result.friendly_casual || { from: "", to: "" };
+  if (key === "professional") {
+    return result.professional_formal || { from: "", to: "" };
+  }
+  return { from: "", to: "" };
+}
 
 export function GrammarFixer({
   provider,
@@ -113,7 +130,7 @@ export function GrammarFixer({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <p className="text-sm text-zinc-400">
-        Infers what you meant, corrects the {fromLang} input, then translates into {toLang} styles.
+        Native, Friendly, Professional, and Literal in {toLang} — how a local would write it.
         {(fromLang === "German" && toLang === "Persian") ||
         (fromLang === "Persian" && toLang === "German")
           ? " · German ↔ Persian (du/Sie and تو/شما)"
@@ -206,75 +223,52 @@ export function GrammarFixer({
       {result && (
         <div className="space-y-4">
           {result.provider && <Badge>via {result.provider}</Badge>}
-          {(result.best_version ||
-            result.canonical_meaning ||
-            result.everyday_neutral?.from) && (
-            <Card className="border-emerald-800">
-              <CardHeader>
-                <CardTitle className="text-emerald-400">
-                  Corrected sentence ({result.from_lang})
-                </CardTitle>
-              </CardHeader>
-              <CardContent
-                dir={rtl.has(result.from_lang) ? "rtl" : "ltr"}
-                className="whitespace-pre-wrap break-words text-sm text-zinc-100"
-              >
-                {result.best_version ||
-                  result.canonical_meaning ||
-                  result.everyday_neutral?.from}
-              </CardContent>
-            </Card>
-          )}
-          {STYLE_KEYS.map(({ n, key, label }) => {
-            const pair = result[key];
-            const enhanced =
-              pair.from ||
-              result.best_version ||
-              result.canonical_meaning ||
-              "";
-            const translated = pair.to;
+          {STYLE_KEYS.map(({ key, label }) => {
+            const pair = stylePair(result, key);
+            const enhanced = pair.from || result.best_version || "";
+            const version = result.wants_translation
+              ? pair.to || pair.from
+              : pair.from || pair.to;
             return (
               <Card key={key}>
                 <CardHeader>
-                  <CardTitle className="text-blue-400">
-                    {n}. {label}
-                  </CardTitle>
+                  <CardTitle className="text-blue-400"># {label}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 overflow-hidden text-sm">
-                  <div className="break-words whitespace-pre-wrap">
-                    <span className="text-zinc-500">Grammar enhanced</span>
-                    <span
-                      dir={rtl.has(result.from_lang) ? "rtl" : "ltr"}
-                      className="mt-1 block whitespace-pre-wrap text-zinc-100"
-                    >
-                      {enhanced || "(empty)"}
-                    </span>
-                  </div>
-                  {result.wants_translation && (
+                  {result.wants_translation && enhanced && (
                     <div className="break-words whitespace-pre-wrap">
-                      <span className="text-zinc-500">Translated</span>
+                      <span className="text-zinc-500">Grammar enhanced</span>
                       <span
-                        dir={rtl.has(result.to_lang) ? "rtl" : "ltr"}
-                        className="mt-1 block whitespace-pre-wrap text-zinc-100"
+                        dir={rtl.has(result.from_lang) ? "rtl" : "ltr"}
+                        className="mt-1 block whitespace-pre-wrap text-zinc-300"
                       >
-                        {translated || "(empty)"}
+                        {enhanced}
                       </span>
                     </div>
                   )}
+                  <div className="break-words whitespace-pre-wrap">
+                    {result.wants_translation && (
+                      <span className="text-zinc-500">Translated</span>
+                    )}
+                    <span
+                      dir={
+                        rtl.has(
+                          result.wants_translation ? result.to_lang : result.from_lang
+                        )
+                          ? "rtl"
+                          : "ltr"
+                      }
+                      className={`block whitespace-pre-wrap text-zinc-100 ${
+                        result.wants_translation ? "mt-1" : ""
+                      }`}
+                    >
+                      {version || "(empty)"}
+                    </span>
+                  </div>
                 </CardContent>
               </Card>
             );
           })}
-          {result.grammar_notes && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-blue-400">Grammar notes</CardTitle>
-              </CardHeader>
-              <CardContent className="whitespace-pre-wrap break-words text-sm text-zinc-300">
-                {result.grammar_notes}
-              </CardContent>
-            </Card>
-          )}
         </div>
       )}
     </form>

@@ -8,8 +8,7 @@ from app.constants import (
     DEFAULT_GRAMMAR_FROM,
     DEFAULT_GRAMMAR_TO,
     GERMAN_PERSIAN_RULES,
-    INTENT_AND_PRACTICE_RULES,
-    GRAMMAR_NOTES_RULES,
+    LEGACY_STYLE_KEYS,
     SEMANTIC_ACCURACY_RULES,
     STRUCTURE_FORMAT_RULES,
     STYLE_VARIANTS,
@@ -47,7 +46,8 @@ def target_invents_speaker_ready(text: str) -> bool:
 
 def collect_style_to_texts(data: dict | None) -> list[str]:
     texts = []
-    for _label, key in STYLE_VARIANTS:
+    keys = [key for _label, key in STYLE_VARIANTS] + list(LEGACY_STYLE_KEYS)
+    for key in keys:
         item = (data or {}).get(key) or {}
         if isinstance(item, dict):
             t = (item.get("to") or "").strip()
@@ -79,6 +79,15 @@ def _style_pair(item) -> dict[str, str]:
     }
 
 
+def _first_style_pair(data: dict, *keys: str) -> dict[str, str]:
+    for key in keys:
+        if key in data and data.get(key) not in (None, ""):
+            pair = _style_pair(data.get(key))
+            if pair["from"] or pair["to"]:
+                return pair
+    return {"from": "", "to": ""}
+
+
 def parse_styled_translation_response(
     data, *, src_hint: str, tgt: str, wants_translation: bool
 ) -> dict:
@@ -86,33 +95,39 @@ def parse_styled_translation_response(
         return {"error": "Unexpected model response."}
 
     detected = (data.get("detected_lang") or src_hint or "").strip() or src_hint
+    native = _first_style_pair(data, "native", "everyday_neutral")
+    friendly = _first_style_pair(data, "friendly", "friendly_casual")
+    professional = _first_style_pair(data, "professional", "professional_formal")
+    literal = _first_style_pair(data, "literal")
     canonical = (data.get("canonical_meaning") or "").strip()
-    best_version = (data.get("best_version") or canonical).strip()
+    best_version = (data.get("best_version") or canonical or native.get("from") or "").strip()
     if not canonical:
         canonical = best_version
-    intended = (data.get("intended_meaning") or "").strip()
-    if not canonical:
-        for _label, key in STYLE_VARIANTS:
-            item = data.get(key) or {}
-            if isinstance(item, dict):
-                src = (item.get("from") or "").strip()
-                if src:
-                    canonical = src
-                    if not best_version:
-                        best_version = src
-                    break
+    if wants_translation:
+        if not native["from"]:
+            native["from"] = best_version
+        if not friendly["from"]:
+            friendly["from"] = native["from"] or best_version
+        if not professional["from"]:
+            professional["from"] = native["from"] or best_version
+        if not literal["from"]:
+            literal["from"] = native["from"] or best_version
     return {
         "from_lang": detected,
         "to_lang": tgt,
         "wants_translation": wants_translation,
-        "intended_meaning": intended,
+        "intended_meaning": (data.get("intended_meaning") or "").strip(),
         "best_version": best_version,
         "canonical_meaning": canonical,
         "subject_reading": (data.get("subject_reading") or "").strip(),
-        "grammar_notes": (data.get("grammar_notes") or "").strip(),
-        "friendly_casual": _style_pair(data.get("friendly_casual")),
-        "professional_formal": _style_pair(data.get("professional_formal")),
-        "everyday_neutral": _style_pair(data.get("everyday_neutral")),
+        "grammar_notes": "",
+        "native": native,
+        "friendly": friendly,
+        "professional": professional,
+        "literal": literal,
+        "friendly_casual": friendly,
+        "professional_formal": professional,
+        "everyday_neutral": native,
     }
 
 
@@ -130,23 +145,15 @@ def build_styled_translation_prompt(
     pair_rules = f"\n{GERMAN_PERSIAN_RULES}\n" if german_persian else ""
 
     translation_block = (
-        f"The user asks for {tgt_label} output.\n"
-        f"1) intended_meaning: what they were trying to say (short, in {src_hint} or {tgt}).\n"
-        f"2) best_version and canonical_meaning: grammar-enhanced {src_hint} ONLY "
-        f"(the corrected input). Same facts and layout as the source. Not a translation. "
-        f"Not a Friendly/Formal/Neutral rewrite of the source.\n"
-        f'3) For every style, "from" MUST be identical to best_version.\n'
-        f'   "to" = translate that enhanced {src_hint} into {tgt_label} in that tone '
-        f"(Friendly/casual, Professional/formal, or Everyday/neutral).\n"
-        f"All three \"to\" texts keep the same who/what/when as the enhanced source.\n"
-        f"Do not merge a list of works into one consecutive paragraph."
+        f"Write Native, Friendly, Professional, and Literal in {tgt_label}.\n"
+        f'"from" = silently grammar-enhanced {src_hint} (same enhanced source on native/friendly/professional).\n'
+        f'"to" = that version in {tgt_label}. Native = how a local would say it; '
+        f"Friendly = more relaxed; Professional = natural workplace; Literal = close wording.\n"
+        f"Do not explain anything. Same who/what/when in all four. Keep source layout."
         if wants_translation
         else (
-            "No target-language translation was requested. Stay in the source language.\n"
-            "1) intended_meaning: what they were trying to say.\n"
-            "2) best_version and canonical_meaning: grammar-enhanced source (one corrected input).\n"
-            '3) Style variants go in "from"; set "to" to an empty string.\n'
-            "Styles change tone only; facts and line breaks must match best_version."
+            "Stay in the source language. Put each version in \"from\" and set \"to\" to empty.\n"
+            "Native / Friendly / Professional / Literal as defined. Do not explain anything."
         )
     )
 
@@ -166,66 +173,41 @@ def build_styled_translation_prompt(
     system_prompt = f"""
 {TEACHER_EDITOR_INSTRUCTION}
 
-INTENT AND BEST LANGUAGE PRACTICE (mandatory):
-{INTENT_AND_PRACTICE_RULES}
-
-GRAMMAR NOTES FORMAT (mandatory):
-{GRAMMAR_NOTES_RULES}
-
 SEMANTIC ACCURACY (mandatory):
 {SEMANTIC_ACCURACY_RULES}
 
 STRUCTURE AND FORMAT (mandatory):
 {STRUCTURE_FORMAT_RULES}
 
-Pipeline you MUST follow (internally, then output JSON only):
+Task:
 1. Treat the input as {src_hint} (detect if the UI hint is wrong).
-2. Infer intended_meaning (what they wanted to say), including implicit subjects/objects.
-3. Write best_version / canonical_meaning in {src_hint}: grammar-enhanced input only.
-   Never put {tgt} in best_version when translating.
-4. Copy that same enhanced source into every style "from". Change tone only in "to".
-5. {translation_block}
+2. {translation_block}
 {pair_rules}
 {context_block}
 {retry_block}
-Also:
-- "from" must be the grammar-enhanced source (same as best_version when translating).
-- best_version is the "Corrected sentence" in {src_hint}, never in {tgt} when translating.
-- grammar_notes: "original" → "fixed". Reason. One issue per line. Never omit if you changed the text.
-- subject_reading: short note like "implicit inanimate 'it' (will be ready)" or "explicit speaker".
-
-Output ONLY valid JSON (no markdown, no commentary).
+Output ONLY valid JSON (no markdown, no commentary, no grammar notes).
 Escape every double quote inside string values as \\".
 Use \\n for line breaks inside strings — never a raw newline.
-Keep each "from"/"to" value complete; do not truncate JSON.
 {{
     "detected_lang": "<detected language name>",
-    "subject_reading": "<how you read omitted/explicit subjects>",
-    "intended_meaning": "<what they were trying to say>",
-    "best_version": "<grammar-enhanced SOURCE / From language, same layout>",
-    "canonical_meaning": "<same as best_version, still SOURCE language>",
-    "grammar_notes": "<each line: \\"wrong\\" → \\"right\\". Reason.>",
-    "friendly_casual": {{"from": "<same grammar-enhanced source as best_version>", "to": "<Friendly/casual {tgt} or empty>"}},
-    "professional_formal": {{"from": "<same grammar-enhanced source as best_version>", "to": "<Professional/formal {tgt} or empty>"}},
-    "everyday_neutral": {{"from": "<same grammar-enhanced source as best_version>", "to": "<Everyday/neutral {tgt} or empty>"}}
+    "native": {{"from": "<enhanced source>", "to": "<Native {tgt} or empty>"}},
+    "friendly": {{"from": "<same enhanced source>", "to": "<Friendly {tgt} or empty>"}},
+    "professional": {{"from": "<same enhanced source>", "to": "<Professional {tgt} or empty>"}},
+    "literal": {{"from": "<source close to original wording>", "to": "<Literal {tgt} or empty>"}}
 }}
 """.strip()
 
     if wants_translation:
         user_msg = (
-            f"Improve this {src_hint} (grammar-enhanced input only — do not translate best_version). "
-            f"Then translate that enhanced sentence into {tgt_label} as 1 Friendly, 2 Professional, "
-            f"3 Everyday. Keep all three \"from\" fields identical to best_version. "
-            "Keep the same structure as the source (greeting, paragraph, then one list item per line). "
-            'Always add Grammar notes as \\"wrong\\" → \\"right\\". Reason.\n\n'
+            f"Rewrite this {src_hint} so it sounds like a native, then give Native, Friendly, "
+            f"Professional, and Literal in {tgt_label}. Silent grammar fixes only. "
+            "Keep the same structure as the source.\n\n"
             "Text:\n{text}"
         )
     else:
         user_msg = (
-            "Infer what this text is trying to say, then rewrite it with best native-language "
-            "practices (not grammar-only). Give a Corrected sentence (best_version), then "
-            "1 Friendly / 2 Professional / 3 Everyday (same language). "
-            'Always add Grammar notes as \\"wrong\\" → \\"right\\". Reason.\n\n'
+            "Rewrite this so it sounds like a native. Give Native, Friendly, Professional, "
+            "and Literal in the same language. Silent grammar fixes only.\n\n"
             "Text:\n{text}"
         )
 
