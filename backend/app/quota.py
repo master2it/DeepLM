@@ -34,7 +34,8 @@ def default_quota_kind(
 ) -> QuotaKind | None:
     if uses_default_hf(provider, hf_api_key):
         return "hf"
-    if uses_default_groq(provider, groq_api_key):
+    # Groq free-tier is 30/day even with a pasted token.
+    if (provider or "") == "groq":
         return "groq"
     return None
 
@@ -127,22 +128,31 @@ def assert_can_generate(request: Request, kind: QuotaKind) -> None:
     limit = _daily_limit(kind)
     label = _LABELS[kind]
     if not redis_reachable():
-        raise HTTPException(
-            status_code=503,
-            detail=(
+        if kind == "groq":
+            detail = (
+                "Redis is required to enforce the Groq 30/day limit "
+                "(your key or the server key). Try again when Redis is up."
+            )
+        else:
+            detail = (
                 f"Redis is required to use the default {label} key. "
                 f"Paste your own {label} token in Settings, or try again when Redis is up."
-            ),
-        )
+            )
+        raise HTTPException(status_code=503, detail=detail)
     counts = peek_counts(request, kind)
     if counts is not None and max(counts) >= limit:
-        raise HTTPException(
-            status_code=429,
-            detail=(
+        if kind == "groq":
+            detail = (
+                f"Daily Groq limit of {limit} generations reached "
+                "(your key or the server key). Wait until UTC midnight. "
+                "Repeat searches already in cache do not count."
+            )
+        else:
+            detail = (
                 f"Daily limit of {limit} default {label} generations reached. "
                 f"Paste your own {label} token in Settings or wait until UTC midnight."
-            ),
-        )
+            )
+        raise HTTPException(status_code=429, detail=detail)
 
 
 def _incr_with_ttl(client, key: str, ttl: int) -> None:

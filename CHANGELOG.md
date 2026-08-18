@@ -32,6 +32,13 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [1.5.0] — 2026-08-18 — minor
 
+### 2026-08-18 — Groq 30/day with pasted token
+- **Type:** patch
+- **Version:** 1.5.0
+- **Summary:** Groq daily limit applies whether the visitor pastes a Groq key or uses the server key. Hugging Face stays uncapped when they paste their own HF token.
+- **Why:** feature
+- **Files:** `backend/app/quota.py`, `backend/tests/test_quota.py`, `frontend/src/components/limits-panel.tsx`, `frontend/src/components/settings-panel.tsx`, `README.md`
+
 ### 2026-08-18 — Align package.json with the public project
 - **Type:** patch
 - **Version:** 1.5.0

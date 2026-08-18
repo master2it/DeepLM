@@ -11,12 +11,14 @@ import {
 
 function QuotaCard({
   title,
+  uncapped,
   ownKey,
   serverConfigured,
   row,
   barClass,
 }: {
   title: string;
+  uncapped: boolean;
   ownKey: boolean;
   serverConfigured: boolean;
   row: ProviderLimit | undefined;
@@ -31,29 +33,33 @@ function QuotaCard({
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base">{title}</CardTitle>
         <Badge>
-          {ownKey
+          {uncapped
             ? "Using your key (uncapped)"
-            : serverConfigured
-              ? "Using server key"
-              : "Server key not set"}
+            : ownKey
+              ? "Your key (30/day)"
+              : serverConfigured
+                ? "Using server key"
+                : "Server key not set"}
         </Badge>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
           <div
             className={`h-full ${barClass}`}
-            style={{ width: `${ownKey ? 0 : pct}%` }}
+            style={{ width: `${uncapped ? 0 : pct}%` }}
           />
         </div>
         <p>
           Used today:{" "}
-          <span className="font-medium text-zinc-100">{ownKey ? "—" : used}</span>{" "}
+          <span className="font-medium text-zinc-100">
+            {uncapped ? "—" : used}
+          </span>{" "}
           / {limit}
         </p>
         <p>
           Remaining:{" "}
           <span className="font-medium text-zinc-100">
-            {ownKey ? "unlimited" : remaining}
+            {uncapped ? "unlimited" : remaining}
           </span>
         </p>
       </CardContent>
@@ -108,21 +114,23 @@ export function LimitsPanel({
   return (
     <div className="space-y-4">
       <p className="text-sm text-zinc-400">
-        Shared server Hugging Face and Groq keys are each limited to 30 successful
-        Grammar, Tenses, and Explain generations per UTC day (this browser and
-        your IP). Your own keys in Settings are not capped. Cache hits do not
-        count.
+        Groq is limited to 30 successful Grammar, Tenses, and Explain generations
+        per UTC day (this browser and your IP), whether you paste your own Groq
+        key or use the server key. Hugging Face is capped only on the shared
+        server token — your own HF key is uncapped. Cache hits do not count.
       </p>
       {error && <p className="text-sm text-red-400">{error}</p>}
       <QuotaCard
-        title="Default HF key"
+        title="Hugging Face"
+        uncapped={ownHf}
         ownKey={ownHf}
         serverConfigured={hfConfigured}
         row={data?.huggingface}
         barClass="bg-blue-500"
       />
       <QuotaCard
-        title="Default Groq key"
+        title="Groq"
+        uncapped={false}
         ownKey={ownGroq}
         serverConfigured={groqConfigured}
         row={data?.groq}
@@ -131,8 +139,8 @@ export function LimitsPanel({
       <p className="text-sm text-zinc-500">Resets: {resets}</p>
       {data && !data.redis && (
         <p className="text-sm text-amber-400">
-          Redis is offline. Default-key generations are blocked until Redis is
-          reachable.
+          Redis is offline. Groq generations and default-key Hugging Face
+          generations are blocked until Redis is reachable.
         </p>
       )}
     </div>

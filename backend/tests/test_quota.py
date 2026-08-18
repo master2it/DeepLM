@@ -29,7 +29,7 @@ class DefaultKeyQuotaTests(unittest.TestCase):
         self.assertTrue(uses_default_groq("groq", None))
         self.assertTrue(uses_default_groq("groq", "  "))
 
-    def test_own_key_skips_quota(self):
+    def test_own_hf_key_skips_quota_groq_does_not(self):
         self.assertFalse(uses_default_hf("huggingface", "hf_abc"))
         self.assertFalse(uses_default_groq("groq", "gsk_abc"))
         self.assertFalse(uses_default_hf("groq", None))
@@ -40,7 +40,7 @@ class DefaultKeyQuotaTests(unittest.TestCase):
         self.assertEqual(default_quota_kind("huggingface", None, None), "hf")
         self.assertEqual(default_quota_kind("groq", None, None), "groq")
         self.assertIsNone(default_quota_kind("huggingface", "hf_x", None))
-        self.assertIsNone(default_quota_kind("groq", None, "gsk_x"))
+        self.assertEqual(default_quota_kind("groq", None, "gsk_x"), "groq")
         self.assertIsNone(default_quota_kind("ollama", None, None))
 
 
