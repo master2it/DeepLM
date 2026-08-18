@@ -28,9 +28,44 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+### 2026-08-18 — Groq/HF speed labels
+- **Type:** patch
+- **Version:** Unreleased
+- **Summary:** Groq cards are labeled Suggested · fast; Hugging Face is Slower · better text.
+- **Why:** feature
+- **Files:** `frontend/src/components/settings-panel.tsx`, `frontend/src/components/limits-panel.tsx`, `frontend/src/app/page.tsx`
+
+### 2026-08-18 — Intent-aware native rewrite (not grammar-only)
+- **Type:** minor
+- **Version:** Unreleased
+- **Summary:** Translate infers what you meant, returns a recommended native best version, and rewrites with target-language best practices instead of grammar-only patches.
+- **Why:** feature
+- **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`, `frontend/src/components/grammar-fixer.tsx`, `frontend/src/lib/api.ts`
+
+### 2026-08-18 — Corrected sentence + numbered styles + grammar notes
+- **Type:** patch
+- **Version:** Unreleased
+- **Summary:** Translate results follow Corrected sentence, then 1 Friendly / 2 Professional / 3 Everyday, then Grammar notes in `"wrong" → "right"` form.
+- **Why:** feature
+- **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`, `frontend/src/components/grammar-fixer.tsx`
+
 ---
 
 ## [1.5.0] — 2026-08-18 — minor
+
+### 2026-08-18 — Hugging Face Inference Providers for Qwen 72B
+- **Type:** patch
+- **Version:** 1.5.0
+- **Summary:** HF chat uses Inference Providers (default together, then auto/fireworks/…). Fixes model_not_supported for Qwen/Qwen2.5-72B-Instruct.
+- **Why:** bug
+- **Files:** `backend/app/llm.py`, `backend/app/config.py`, `.env.example`, `railway.toml`, `docker-compose.yml`
+
+### 2026-08-18 — Tenses cards missing after JSON array parse
+- **Type:** patch
+- **Version:** 1.5.0
+- **Summary:** Tense JSON arrays were parsed as a single object, so the API stored empty items and cards did not render. Arrays are extracted correctly now.
+- **Why:** bug
+- **Files:** `backend/app/jsonutil.py`, `backend/app/tenses.py`, `backend/app/cache.py`, `frontend/src/components/tenses-generator.tsx`
 
 ### 2026-08-18 — HF server limit is 50 even if env says 30
 - **Type:** patch

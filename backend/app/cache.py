@@ -11,7 +11,7 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-CACHE_SCHEMA = 4
+CACHE_SCHEMA = 7
 _client = None
 _client_failed = False
 

@@ -35,9 +35,9 @@ import {
 } from "@/lib/search-history";
 
 const STYLE_KEYS = [
-  { key: "friendly_casual" as const, label: "Friendly / Casual" },
-  { key: "professional_formal" as const, label: "Professional / Formal" },
-  { key: "everyday_neutral" as const, label: "Everyday / Neutral" },
+  { n: 1, key: "friendly_casual" as const, label: "Friendly / Casual" },
+  { n: 2, key: "professional_formal" as const, label: "Professional / Formal" },
+  { n: 3, key: "everyday_neutral" as const, label: "Everyday / Neutral" },
 ];
 
 export function GrammarFixer({
@@ -113,7 +113,8 @@ export function GrammarFixer({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <p className="text-sm text-zinc-400">
-        {fromLang} → {toLang}: Friendly / Formal / Neutral styles
+        Infers what you meant, then a corrected sentence, three styles, and grammar notes.
+        {fromLang} → {toLang}
         {(fromLang === "German" && toLang === "Persian") ||
         (fromLang === "Persian" && toLang === "German")
           ? " · German ↔ Persian (du/Sie and تو/شما)"
@@ -206,6 +207,63 @@ export function GrammarFixer({
       {result && (
         <div className="space-y-4">
           {result.provider && <Badge>via {result.provider}</Badge>}
+          {(result.best_version || result.canonical_meaning) && (
+            <Card className="border-emerald-800">
+              <CardHeader>
+                <CardTitle className="text-emerald-400">Corrected sentence</CardTitle>
+              </CardHeader>
+              <CardContent
+                dir={
+                  rtl.has(result.wants_translation ? result.to_lang : result.from_lang)
+                    ? "rtl"
+                    : "ltr"
+                }
+                className="whitespace-pre-wrap break-words text-sm text-zinc-100"
+              >
+                {result.best_version || result.canonical_meaning}
+              </CardContent>
+            </Card>
+          )}
+          {STYLE_KEYS.map(({ n, key, label }) => {
+            const pair = result[key];
+            const body = result.wants_translation
+              ? pair.to || pair.from
+              : pair.from || pair.to;
+            return (
+              <Card key={key}>
+                <CardHeader>
+                  <CardTitle className="text-blue-400">
+                    {n}. {label}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 overflow-hidden text-sm">
+                  <div
+                    dir={
+                      rtl.has(
+                        result.wants_translation ? result.to_lang : result.from_lang
+                      )
+                        ? "rtl"
+                        : "ltr"
+                    }
+                    className="break-words whitespace-pre-wrap"
+                  >
+                    {body || "(empty)"}
+                  </div>
+                  {result.wants_translation && pair.from && pair.to && (
+                    <div className="break-words whitespace-pre-wrap text-zinc-400">
+                      <span className="text-zinc-500">Source rewrite: </span>
+                      <span
+                        dir={rtl.has(result.from_lang) ? "rtl" : "ltr"}
+                        className="block whitespace-pre-wrap"
+                      >
+                        {pair.from}
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
           {result.grammar_notes && (
             <Card>
               <CardHeader>
@@ -216,38 +274,6 @@ export function GrammarFixer({
               </CardContent>
             </Card>
           )}
-          {STYLE_KEYS.map(({ key, label }) => {
-            const pair = result[key];
-            return (
-              <Card key={key}>
-                <CardHeader>
-                  <CardTitle className="text-blue-400">{label}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 overflow-hidden text-sm">
-                  <div className="break-words whitespace-pre-wrap">
-                    <span className="text-zinc-400">[From]: </span>
-                    <span
-                      dir={rtl.has(result.from_lang) ? "rtl" : "ltr"}
-                      className="block whitespace-pre-wrap"
-                    >
-                      {pair.from || "(empty)"}
-                    </span>
-                  </div>
-                  {result.wants_translation && (
-                    <div className="break-words whitespace-pre-wrap">
-                      <span className="text-zinc-400">[To]: </span>
-                      <span
-                        dir={rtl.has(result.to_lang) ? "rtl" : "ltr"}
-                        className="block whitespace-pre-wrap"
-                      >
-                        {pair.to || "(empty)"}
-                      </span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
         </div>
       )}
     </form>

@@ -19,6 +19,13 @@ class ExtractJsonTests(unittest.TestCase):
         raw = 'prefix {"a": "x { y}", "b": 1} trailing {nope}'
         self.assertEqual(extract_json(raw), '{"a": "x { y}", "b": 1}')
 
+    def test_prefers_array_when_it_starts_first(self):
+        raw = '[{"tense": "Present Simple", "text": "I work"}, {"tense": "Past Simple", "text": "I worked"}]'
+        data = parse_model_json(raw)
+        self.assertIsInstance(data, list)
+        self.assertEqual(len(data), 2)
+        self.assertEqual(data[0]["tense"], "Present Simple")
+
     def test_strips_markdown_fence(self):
         raw = '```json\n{"ok": true}\n```'
         self.assertEqual(parse_model_json(raw), {"ok": True})

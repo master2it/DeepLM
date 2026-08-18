@@ -19,6 +19,8 @@ export type GrammarResult = {
   from_lang: string;
   to_lang: string;
   wants_translation: boolean;
+  intended_meaning?: string;
+  best_version?: string;
   canonical_meaning?: string;
   subject_reading?: string;
   grammar_notes?: string;

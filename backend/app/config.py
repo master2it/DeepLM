@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     ollama_timeout_seconds: float = 120.0
     hf_token: str = ""
     hf_chat_model: str = "Qwen/Qwen2.5-72B-Instruct"
+    hf_provider: str = "together"
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-120b"
     groq_base_url: str = "https://api.groq.com/openai/v1"

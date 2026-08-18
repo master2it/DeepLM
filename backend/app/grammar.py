@@ -8,6 +8,8 @@ from app.constants import (
     DEFAULT_GRAMMAR_FROM,
     DEFAULT_GRAMMAR_TO,
     GERMAN_PERSIAN_RULES,
+    INTENT_AND_PRACTICE_RULES,
+    GRAMMAR_NOTES_RULES,
     SEMANTIC_ACCURACY_RULES,
     STRUCTURE_FORMAT_RULES,
     STYLE_VARIANTS,
@@ -53,9 +55,10 @@ def collect_style_to_texts(data: dict | None) -> list[str]:
                 texts.append(t)
         elif isinstance(item, str) and item.strip():
             texts.append(item.strip())
-    canon = ((data or {}).get("canonical_meaning") or "").strip()
-    if canon:
-        texts.append(canon)
+    for extra in ("canonical_meaning", "best_version", "intended_meaning"):
+        t = ((data or {}).get(extra) or "").strip()
+        if t:
+            texts.append(t)
     return texts
 
 
@@ -83,11 +86,18 @@ def parse_styled_translation_response(
         return {"error": "Unexpected model response."}
 
     detected = (data.get("detected_lang") or src_hint or "").strip() or src_hint
+    canonical = (data.get("canonical_meaning") or "").strip()
+    best_version = (data.get("best_version") or canonical).strip()
+    if not canonical:
+        canonical = best_version
+    intended = (data.get("intended_meaning") or "").strip()
     return {
         "from_lang": detected,
         "to_lang": tgt,
         "wants_translation": wants_translation,
-        "canonical_meaning": (data.get("canonical_meaning") or "").strip(),
+        "intended_meaning": intended,
+        "best_version": best_version,
+        "canonical_meaning": canonical,
         "subject_reading": (data.get("subject_reading") or "").strip(),
         "grammar_notes": (data.get("grammar_notes") or "").strip(),
         "friendly_casual": _style_pair(data.get("friendly_casual")),
@@ -111,21 +121,23 @@ def build_styled_translation_prompt(
 
     translation_block = (
         f"The user asks for {tgt_label} output.\n"
-        f"1) Write canonical_meaning in {tgt} ({tgt_label}): same facts AND the same "
-        f"layout as the source (greeting, paragraphs, list items on separate lines).\n"
-        f'2) For each style, "from" = corrected/cleaned {src_hint} text in that tone;\n'
-        f'   "to" = the SAME meaning and the SAME line-break structure as canonical_meaning, '
+        f"1) intended_meaning: what they were trying to say (in {tgt}).\n"
+        f"2) best_version and canonical_meaning: the recommended native {tgt_label} sentence(s), "
+        f"same facts AND the same layout as the source (greeting, paragraphs, list items).\n"
+        f'3) For each style, "from" = best-practice {src_hint} (what they should have written);\n'
+        f'   "to" = the SAME intent and the SAME line-break structure as best_version, '
         f"restyled in {tgt_label} (Friendly/casual, Professional/formal, or Everyday/neutral).\n"
-        f"All three \"to\" texts must preserve identical who/what/when facts as canonical_meaning.\n"
+        f"All three \"to\" texts must preserve identical who/what/when facts as best_version.\n"
         f"Do not merge a list of works into one consecutive paragraph.\n"
-        f"Sound natural as spoken by a native — not stiff or word-for-word."
+        f"Do not stop at grammar repair — use native collocations and typical phrasing."
         if wants_translation
         else (
-            "No target-language translation was requested. Keep styled rewrites in the source language.\n"
-            "1) Write canonical_meaning in the source language with the same layout "
+            "No target-language translation was requested. Keep rewrites in the source language.\n"
+            "1) intended_meaning: what they were trying to say.\n"
+            "2) best_version and canonical_meaning: the recommended native sentence, same layout "
             "(greeting, paragraphs, list items on separate lines).\n"
-            '2) Put each styled corrected version in "from" and set "to" to an empty string.\n'
-            "Styles change tone only; meaning and line breaks must match canonical_meaning."
+            '3) Put each styled native rewrite in "from" and set "to" to an empty string.\n'
+            "Styles change tone only; intent and line breaks must match best_version."
         )
     )
 
@@ -145,6 +157,12 @@ def build_styled_translation_prompt(
     system_prompt = f"""
 {TEACHER_EDITOR_INSTRUCTION}
 
+INTENT AND BEST LANGUAGE PRACTICE (mandatory):
+{INTENT_AND_PRACTICE_RULES}
+
+GRAMMAR NOTES FORMAT (mandatory):
+{GRAMMAR_NOTES_RULES}
+
 SEMANTIC ACCURACY (mandatory):
 {SEMANTIC_ACCURACY_RULES}
 
@@ -153,16 +171,18 @@ STRUCTURE AND FORMAT (mandatory):
 
 Pipeline you MUST follow (internally, then output JSON only):
 1. Treat the input as {src_hint} (detect if the UI hint is wrong).
-2. Analyze whether subjects/objects are explicit or implicit.
-3. Decide a single canonical_meaning in {tgt_label if wants_translation else src_hint} when translating.
-4. Derive all style variants FROM that canonical meaning (tone only — no meaning drift).
+2. Infer intended_meaning (what they wanted to say), including implicit subjects/objects.
+3. Write best_version / canonical_meaning in {tgt_label if wants_translation else src_hint}
+   as a native would say it — not a grammar-only patch.
+4. Derive all style variants FROM that best version (tone only — no intent drift).
 5. {translation_block}
 {pair_rules}
 {context_block}
 {retry_block}
 Also:
-- "from" must be grammar-fixed source text, never the raw broken input if errors exist.
-- grammar_notes: briefly explain grammar mistakes (or "").
+- "from" must be the source rewritten with best source-language practice, never the raw broken input.
+- best_version is the "Corrected sentence" (clearest native version). Everyday/neutral may be very close to it.
+- grammar_notes: "original" → "fixed". Reason. One issue per line. Never omit if you changed the text.
 - subject_reading: short note like "implicit inanimate 'it' (will be ready)" or "explicit speaker".
 
 Output ONLY valid JSON (no markdown, no commentary).
@@ -172,8 +192,10 @@ Keep each "from"/"to" value complete; do not truncate JSON.
 {{
     "detected_lang": "<detected language name>",
     "subject_reading": "<how you read omitted/explicit subjects>",
-    "canonical_meaning": "<same layout as source, in the target language>",
-    "grammar_notes": "<brief notes or empty>",
+    "intended_meaning": "<what they were trying to say>",
+    "best_version": "<recommended native sentence, same layout as source>",
+    "canonical_meaning": "<same as best_version>",
+    "grammar_notes": "<each line: \\"wrong\\" → \\"right\\". Reason.>",
     "friendly_casual": {{"from": "<corrected casual source>", "to": "<Friendly/casual {tgt} or empty>"}},
     "professional_formal": {{"from": "<corrected formal source>", "to": "<Professional/formal {tgt} or empty>"}},
     "everyday_neutral": {{"from": "<corrected neutral source>", "to": "<Everyday/neutral {tgt} or empty>"}}
@@ -182,16 +204,20 @@ Keep each "from"/"to" value complete; do not truncate JSON.
 
     if wants_translation:
         user_msg = (
-            f"Translate and fix this {src_hint} into {tgt_label}. "
-            f"Then give Friendly/casual, Professional/formal, and Everyday/neutral versions in {tgt}. "
+            f"Infer what this {src_hint} is trying to say, then rewrite it into natural {tgt_label} "
+            f"using best {tgt} practices (not grammar-only). "
+            f"Give a Corrected sentence (best_version), then 1 Friendly/casual, 2 Professional/formal, "
+            f"and 3 Everyday/neutral in {tgt}. "
             "Keep the same structure as the source (greeting, paragraph, then one list item per line). "
-            "Explain grammar briefly in grammar_notes if needed.\n\n"
+            'Always add Grammar notes as \\"wrong\\" → \\"right\\". Reason.\n\n'
             "Text:\n{text}"
         )
     else:
         user_msg = (
-            "Correct and improve this text, then provide 3 style variants "
-            "(same language, no translation).\n\n"
+            "Infer what this text is trying to say, then rewrite it with best native-language "
+            "practices (not grammar-only). Give a Corrected sentence (best_version), then "
+            "1 Friendly / 2 Professional / 3 Everyday (same language). "
+            'Always add Grammar notes as \\"wrong\\" → \\"right\\". Reason.\n\n'
             "Text:\n{text}"
         )
 

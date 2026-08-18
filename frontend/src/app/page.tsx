@@ -97,7 +97,7 @@ export default function HomePage() {
                   : "border-red-700 bg-red-950 text-red-300"
               }
             >
-              {hfReady ? "HF: ready" : "HF: not set"}
+              {hfReady ? "HF: ready · slower, better text" : "HF: not set"}
             </Badge>
             <Badge
               className={
@@ -106,7 +106,7 @@ export default function HomePage() {
                   : "border-red-700 bg-red-950 text-red-300"
               }
             >
-              {groqReady ? "Groq: ready" : "Groq: not set"}
+              {groqReady ? "Groq: ready · suggested, fast" : "Groq: not set"}
             </Badge>
           </div>
         )}

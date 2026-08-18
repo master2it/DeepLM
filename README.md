@@ -40,7 +40,7 @@ DeepLM is a small, self-hostable language-learning tool: fix a sentence in sever
 
 | Area | What you get |
 | --- | --- |
-| **Grammar / spell fixer** | Tab **Translate / Grammar/Spell Fixer**. Default pair English → Persian. Three styles. Max 1000 characters. Recent searches stay in this browser. |
+| **Grammar / spell fixer** | Tab **Translate / Grammar/Spell Fixer**. Infers intent, then **Corrected sentence**, numbered styles (Friendly / Formal / Neutral), and **Grammar notes** (`"wrong" → "right"`). Default English → Persian. Max 1000 characters. |
 | **Tenses** | English: 12 tenses. German: 6 (Präsens, Präteritum, Perfekt, Plusquamperfekt, Futur I, Futur II). Persian gloss on every card. Recent searches stay in this browser. |
 | **Tense explanation** | Per-tense teaching notes and examples (cached in Redis like grammar/tenses). |
 | **Providers** | Default is **Hugging Face**. Groq is optional. **Ollama is disabled** for now (`OLLAMA_ENABLED=false`). A selected provider is exclusive (no silent vendor fallback). |
@@ -159,7 +159,7 @@ Copy [`.env.example`](.env.example). Important variables:
 | `HF_TOKEN` / `GROQ_API_KEY` | Server default keys. Groq is always 30/day (pasted or server). HF is 50/day only for the server token. |
 | `HF_DEFAULT_DAILY_LIMIT` / `GROQ_DEFAULT_DAILY_LIMIT` | Defaults `50` (HF server token) and `30` (Groq). |
 | `OLLAMA_BASE_URL` / `OLLAMA_MODEL` | Local model (`deepseek-r1` by default). |
-| `HF_CHAT_MODEL` / `GROQ_MODEL` | Defaults: `Qwen/Qwen2.5-72B-Instruct`, `openai/gpt-oss-120b`. |
+| `HF_CHAT_MODEL` / `HF_PROVIDER` / `GROQ_MODEL` | HF default `Qwen/Qwen2.5-72B-Instruct` via Inference Providers (`together` recommended). Groq: `openai/gpt-oss-120b`. |
 | `REDIS_URL` / `REDIS_PRIVATE_URL` | Cache + quotas. Private URL is preferred on Railway. |
 | `REDIS_TTL_SECONDS` | Cache TTL (default `43200` = 12 hours). |
 | `CORS_ORIGINS` | Comma-separated browser origins. |

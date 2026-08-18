@@ -76,6 +76,12 @@ class PromptArchitectureTests(unittest.TestCase):
             wants_translation=True,
         )
         self.assertIn("canonical_meaning", system)
+        self.assertIn("intended_meaning", system)
+        self.assertIn("best_version", system)
+        self.assertIn("grammar-only", system)
+        self.assertIn("Grammar notes", system)
+        self.assertIn('"original fragment"', system)
+        self.assertIn("Corrected sentence", user)
         self.assertIn("Do not invent explicit subjects", system)
         self.assertIn("Never flatten", system)
         self.assertIn("American English", system)
@@ -117,6 +123,8 @@ class ParseContractTests(unittest.TestCase):
     def test_parse_preserves_ui_keys(self):
         raw = {
             "detected_lang": "Persian",
+            "intended_meaning": "The thing will be ready next week.",
+            "best_version": "It will be ready next week.",
             "canonical_meaning": "It will be ready next week.",
             "grammar_notes": "",
             "friendly_casual": {"from": "x", "to": "It'll be ready next week."},
@@ -128,6 +136,22 @@ class ParseContractTests(unittest.TestCase):
         )
         self.assertEqual(parsed["from_lang"], "Persian")
         self.assertTrue(parsed["wants_translation"])
+        self.assertEqual(parsed["best_version"], "It will be ready next week.")
+        self.assertEqual(parsed["intended_meaning"], "The thing will be ready next week.")
+
+    def test_best_version_falls_back_to_canonical(self):
+        raw = {
+            "detected_lang": "English",
+            "canonical_meaning": "I agree with you.",
+            "friendly_casual": {"from": "I agree with you.", "to": ""},
+            "professional_formal": {"from": "I agree with you.", "to": ""},
+            "everyday_neutral": {"from": "I agree with you.", "to": ""},
+        }
+        parsed = grammar.parse_styled_translation_response(
+            raw, src_hint="English", tgt="English", wants_translation=False
+        )
+        self.assertEqual(parsed["best_version"], "I agree with you.")
+        self.assertEqual(parsed["canonical_meaning"], "I agree with you.")
 
 
 class MockedPipelineTests(unittest.TestCase):

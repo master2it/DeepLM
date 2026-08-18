@@ -11,11 +11,14 @@ def extract_json(response_text: str) -> str:
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
         text = re.sub(r"\s*```$", "", text)
-    start = text.find("{")
-    if start < 0:
-        start = text.find("[")
-        if start < 0:
-            return text
+    start_obj = text.find("{")
+    start_arr = text.find("[")
+    if start_obj < 0 and start_arr < 0:
+        return text
+    if start_arr >= 0 and (start_obj < 0 or start_arr < start_obj):
+        start = start_arr
+    else:
+        start = start_obj
     depth = 0
     in_str = False
     escape = False

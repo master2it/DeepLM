@@ -11,6 +11,8 @@ import {
 
 function QuotaCard({
   title,
+  tag,
+  tagClass,
   uncapped,
   ownKey,
   serverConfigured,
@@ -19,6 +21,8 @@ function QuotaCard({
   fallbackLimit = 30,
 }: {
   title: string;
+  tag?: string;
+  tagClass?: string;
   uncapped: boolean;
   ownKey: boolean;
   serverConfigured: boolean;
@@ -32,8 +36,11 @@ function QuotaCard({
   const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base">{title}</CardTitle>
+      <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <CardTitle className="text-base">{title}</CardTitle>
+          {tag && <Badge className={tagClass}>{tag}</Badge>}
+        </div>
         <Badge>
           {uncapped
             ? "Using your key (uncapped)"
@@ -124,6 +131,8 @@ export function LimitsPanel({
       {error && <p className="text-sm text-red-400">{error}</p>}
       <QuotaCard
         title="Hugging Face"
+        tag="Slower · better text"
+        tagClass="border-violet-700 bg-violet-950 text-violet-200"
         uncapped={ownHf}
         ownKey={ownHf}
         serverConfigured={hfConfigured}
@@ -133,6 +142,8 @@ export function LimitsPanel({
       />
       <QuotaCard
         title="Groq"
+        tag="Suggested · fast"
+        tagClass="border-emerald-700 bg-emerald-950 text-emerald-200"
         uncapped={false}
         ownKey={ownGroq}
         serverConfigured={groqConfigured}

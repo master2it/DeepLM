@@ -1,10 +1,17 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { HealthPayload, ProviderId } from "@/lib/api";
 
-const OPTIONS: { id: ProviderId; title: string; hint: string }[] = [
+const OPTIONS: {
+  id: ProviderId;
+  title: string;
+  tag?: string;
+  tagClass?: string;
+  hint: string;
+}[] = [
   {
     id: "ollama",
     title: "Ollama",
@@ -13,12 +20,16 @@ const OPTIONS: { id: ProviderId; title: string; hint: string }[] = [
   {
     id: "huggingface",
     title: "Hugging Face",
-    hint: "Default. Paste your HF token below, or leave empty to use the server HF_TOKEN (50 generations per UTC day).",
+    tag: "Slower · better text",
+    tagClass: "border-violet-700 bg-violet-950 text-violet-200",
+    hint: "Default. Stronger, more careful wording — usually slower. Paste your HF token below, or leave empty to use the server HF_TOKEN (50 generations per UTC day).",
   },
   {
     id: "groq",
     title: "Groq",
-    hint: "Cloud chat. Paste your Groq API key or leave empty for the server key. Groq is always 30 generations per UTC day (your token or the server key).",
+    tag: "Suggested · fast",
+    tagClass: "border-emerald-700 bg-emerald-950 text-emerald-200",
+    hint: "Suggested when you want a quick reply. Paste your Groq API key or leave empty for the server key. Groq is always 30 generations per UTC day (your token or the server key).",
   },
 ];
 
@@ -87,7 +98,12 @@ export function SettingsPanel({
                 className="mt-1"
               />
               <span className="space-y-1">
-                <span className="block font-medium">{opt.title}</span>
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{opt.title}</span>
+                  {opt.tag && (
+                    <Badge className={opt.tagClass}>{opt.tag}</Badge>
+                  )}
+                </span>
                 <span className="block text-sm text-zinc-400">{opt.hint}</span>
                 {info && (
                   <span className="block text-xs text-zinc-500">

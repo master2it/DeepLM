@@ -235,6 +235,11 @@ export function TensesGenerator({
           via {usedProvider} · {language} · {tenseCount} tenses
         </Badge>
       )}
+      {!loading && usedProvider && items.length === 0 && (
+        <p className="text-sm text-amber-400">
+          No tense cards were returned. Try again with a short phrase.
+        </p>
+      )}
       <div
         className={
           language === "German"

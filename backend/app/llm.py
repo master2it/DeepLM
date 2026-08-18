@@ -139,6 +139,48 @@ def _ollama_chat(
     return content
 
 
+def _clean_hf_model(value: str) -> str:
+    return (value or "").strip().strip('"').strip("'")
+
+
+def _split_hf_model(value: str) -> tuple[str, str | None]:
+    """Support HF_CHAT_MODEL=Qwen/Qwen2.5-72B-Instruct:together"""
+    model = _clean_hf_model(value)
+    if ":" in model and not model.startswith("http"):
+        base, maybe_provider = model.rsplit(":", 1)
+        if "/" in base and maybe_provider and "/" not in maybe_provider:
+            return base, maybe_provider.strip().lower()
+    return model, None
+
+
+def _hf_provider_candidates(explicit: str | None) -> list[str]:
+    ordered: list[str] = []
+    for name in (
+        (explicit or "").strip().lower(),
+        (get_settings().hf_provider or "").strip().lower(),
+        "auto",
+        "together",
+        "fireworks-ai",
+        "nebius",
+        "novita",
+        "sambanova",
+        "hf-inference",
+    ):
+        if name and name not in ordered:
+            ordered.append(name)
+    return ordered
+
+
+def _make_hf_client(token: str, provider: str):
+    try:
+        return InferenceClient(provider=provider, api_key=token)
+    except TypeError:
+        try:
+            return InferenceClient(provider=provider, token=token)
+        except TypeError:
+            return InferenceClient(token=token)
+
+
 def _huggingface_chat(
     messages: list[dict[str, str]],
     *,
@@ -150,17 +192,40 @@ def _huggingface_chat(
     token = _resolve_hf_key(hf_api_key)
     if not token:
         raise LLMError("HF_TOKEN is not configured.")
-    api = InferenceClient(token=token)
-    response = api.chat_completion(
-        messages=messages,
-        model=settings.hf_chat_model,
-        temperature=temperature,
-        max_tokens=max_tokens,
+    model, model_provider = _split_hf_model(settings.hf_chat_model)
+    last_error: Exception | None = None
+    for provider in _hf_provider_candidates(model_provider):
+        try:
+            api = _make_hf_client(token, provider)
+            response = api.chat_completion(
+                messages=messages,
+                model=model,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            content = _hf_chat_content(response)
+            if not content.strip():
+                raise LLMError("Hugging Face returned empty content.")
+            if provider != "auto":
+                logger.info("Hugging Face chat via provider=%s model=%s", provider, model)
+            return content
+        except LLMError:
+            raise
+        except Exception as exc:
+            text = str(exc).lower()
+            if "model_not_supported" in text or "not supported by any provider" in text:
+                logger.warning(
+                    "HF model %s not on provider %s: %s", model, provider, exc
+                )
+                last_error = exc
+                continue
+            last_error = exc
+            break
+    hint = (
+        " Enable a host for this model at https://huggingface.co/settings/inference-providers "
+        "(Together or Fireworks) or set HF_PROVIDER=together / HF_CHAT_MODEL=...:together."
     )
-    content = _hf_chat_content(response)
-    if not content.strip():
-        raise LLMError("Hugging Face returned empty content.")
-    return content
+    raise LLMError(str(last_error) + hint if last_error else "Hugging Face chat failed." + hint)
 
 
 def _groq_chat(

@@ -112,7 +112,10 @@ def _normalize_items(data, *, language: str) -> list[dict]:
     if isinstance(data, dict) and isinstance(data.get("items"), list):
         data = data["items"]
     if not isinstance(data, list):
-        return []
+        if isinstance(data, dict) and (data.get("tense") or data.get("text")):
+            data = [data]
+        else:
+            return []
     items = []
     for row in data:
         if not isinstance(row, dict):
@@ -144,7 +147,7 @@ def _normalize_items(data, *, language: str) -> list[dict]:
     for key in GERMAN_TENSE_KEYS:
         if key in by_key:
             ordered.append(by_key[key])
-    return ordered
+    return ordered or items
 
 
 def get_tenses_from_ai(
