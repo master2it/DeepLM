@@ -20,7 +20,19 @@ import {
   type GrammarResult,
   type LanguagesPayload,
   type ProviderId,
+  MAX_INPUT_CHARS,
 } from "@/lib/api";
+import {
+  formatHistoryTime,
+  SearchHistory,
+} from "@/components/search-history";
+import {
+  clearGrammarHistory,
+  pushGrammarHistory,
+  readGrammarHistory,
+  removeGrammarHistory,
+  type GrammarHistoryItem,
+} from "@/lib/search-history";
 
 const STYLE_KEYS = [
   { key: "friendly_casual" as const, label: "Friendly / Casual" },
@@ -44,8 +56,10 @@ export function GrammarFixer({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GrammarResult | null>(null);
+  const [history, setHistory] = useState<GrammarHistoryItem[]>([]);
 
   useEffect(() => {
+    setHistory(readGrammarHistory());
     fetchLanguages()
       .then((data) => {
         setMeta(data);
@@ -63,6 +77,10 @@ export function GrammarFixer({
       setError("Please enter text first.");
       return;
     }
+    if (text.trim().length > MAX_INPUT_CHARS) {
+      setError(`Text must be at most ${MAX_INPUT_CHARS} characters.`);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -75,6 +93,15 @@ export function GrammarFixer({
         hf_api_key: hfApiKey,
       });
       setResult(data);
+      setHistory(
+        pushGrammarHistory({
+          text: text.trim(),
+          from_lang: fromLang,
+          to_lang: toLang,
+          provider: data.provider,
+          result: data,
+        })
+      );
     } catch (err) {
       setResult(null);
       setError(err instanceof Error ? err.message : "Request failed");
@@ -94,11 +121,15 @@ export function GrammarFixer({
       </p>
       <Textarea
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => setText(e.target.value.slice(0, MAX_INPUT_CHARS))}
         placeholder={`Enter ${fromLang} text…`}
+        maxLength={MAX_INPUT_CHARS}
         dir={rtl.has(fromLang) ? "rtl" : "ltr"}
         className="min-h-[100px]"
       />
+      <p className="text-xs text-zinc-500">
+        {text.length} / {MAX_INPUT_CHARS} characters
+      </p>
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
         <div className="w-full space-y-1 sm:min-w-40 sm:flex-1">
           <Label>From</Label>
@@ -144,10 +175,34 @@ export function GrammarFixer({
           </Select>
         </div>
         <Button type="submit" variant="success" disabled={loading} className="w-full sm:w-auto">
-          {loading ? "Translating…" : "Translate with Styles"}
+          {loading ? "Translating…" : "Translate"}
         </Button>
       </div>
       {error && <p className="text-sm text-red-400">{error}</p>}
+      <SearchHistory
+        items={history.map((item) => ({
+          id: item.id,
+          at: item.at,
+          title: item.text,
+          subtitle: `${item.from_lang} → ${item.to_lang}${
+            item.provider ? ` · ${item.provider}` : ""
+          } · ${formatHistoryTime(item.at)}`,
+        }))}
+        onSelect={(id) => {
+          const item = history.find((row) => row.id === id);
+          if (!item) return;
+          setText(item.text);
+          setFromLang(item.from_lang);
+          setToLang(item.to_lang);
+          setResult(item.result);
+          setError(null);
+        }}
+        onRemove={(id) => setHistory(removeGrammarHistory(id))}
+        onClear={() => {
+          clearGrammarHistory();
+          setHistory([]);
+        }}
+      />
       {result && (
         <div className="space-y-4">
           {result.provider && <Badge>via {result.provider}</Badge>}

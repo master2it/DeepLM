@@ -17,8 +17,14 @@ THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
 
 ProviderName = Literal["ollama", "huggingface", "groq"]
 PROVIDERS: tuple[ProviderName, ...] = ("ollama", "huggingface", "groq")
-DEFAULT_ORDER: tuple[ProviderName, ...] = PROVIDERS
 _ALIASES = {"hf": "huggingface", "hugging_face": "huggingface"}
+
+
+def default_order() -> list[ProviderName]:
+    order: list[ProviderName] = ["huggingface", "groq"]
+    if get_settings().ollama_enabled:
+        order.insert(1, "ollama")
+    return order
 
 
 class LLMError(RuntimeError):
@@ -34,7 +40,7 @@ def strip_thinking(text: str) -> str:
 
 def normalize_provider(provider: str | None) -> ProviderName:
     if not provider or not str(provider).strip():
-        return "ollama"
+        return "huggingface"
     name = str(provider).strip().lower()
     name = _ALIASES.get(name, name)
     if name not in PROVIDERS:
@@ -49,7 +55,8 @@ def provider_route(
 ) -> list[ProviderName]:
     if exclusive:
         return [preferred]
-    return [preferred] + [p for p in DEFAULT_ORDER if p != preferred]
+    order = default_order()
+    return [preferred] + [p for p in order if p != preferred]
 
 
 def _hf_chat_content(response: Any) -> str:
@@ -79,6 +86,8 @@ def _skip_reason(
     groq_api_key: str | None = None,
     hf_api_key: str | None = None,
 ) -> str | None:
+    if name == "ollama" and not get_settings().ollama_enabled:
+        return "Ollama is temporarily disabled"
     if name == "huggingface" and not _resolve_hf_key(hf_api_key):
         return "HF_TOKEN is not configured"
     if name == "groq" and not _resolve_groq_key(groq_api_key):
@@ -247,7 +256,8 @@ def providers_status() -> list[dict[str, Any]]:
         {
             "id": "ollama",
             "label": "Ollama",
-            "available": ollama_reachable(),
+            "available": settings.ollama_enabled and ollama_reachable(),
+            "enabled": settings.ollama_enabled,
             "model": settings.ollama_model,
         },
         {

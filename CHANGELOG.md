@@ -32,6 +32,34 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [1.5.0] — 2026-08-18 — minor
 
+### 2026-08-18 — HF server token daily limit 50
+- **Type:** patch
+- **Version:** 1.5.0
+- **Summary:** Shared server Hugging Face token allows 50 successful generations per UTC day. Groq stays at 30.
+- **Why:** feature
+- **Files:** `backend/app/config.py`, `backend/app/quota.py`, `frontend/src/components/limits-panel.tsx`, `frontend/src/components/settings-panel.tsx`, `.env.example`, `README.md`
+
+### 2026-08-18 — Translate tab, 1000-char cap, JSON repair
+- **Type:** patch
+- **Version:** 1.5.0
+- **Summary:** Grammar tab is labeled Translate. Input is capped at 1000 characters. Long replies that used to fail with a JSON delimiter error are parsed more reliably (and retried once).
+- **Why:** bug
+- **Files:** `frontend/src/app/page.tsx`, `frontend/src/components/grammar-fixer.tsx`, `frontend/src/components/tenses-generator.tsx`, `backend/app/jsonutil.py`, `backend/app/grammar.py`, `backend/app/main.py`, `backend/app/constants.py`
+
+### 2026-08-18 — Disable Ollama, default Hugging Face
+- **Type:** patch
+- **Version:** 1.5.0
+- **Summary:** Ollama is off (`OLLAMA_ENABLED=false`). Hugging Face is the default provider. Saved Ollama selections switch to HF.
+- **Why:** feature
+- **Files:** `backend/app/config.py`, `backend/app/llm.py`, `backend/app/main.py`, `frontend/src/lib/api.ts`, `frontend/src/app/page.tsx`, `frontend/src/components/settings-panel.tsx`, `.env.example`, `README.md`
+
+### 2026-08-18 — Grammar and Tenses search history
+- **Type:** minor
+- **Version:** 1.5.0
+- **Summary:** Grammar and Tenses keep recent successful searches in the browser. Click an item to restore the query and last result without calling the API.
+- **Why:** feature
+- **Files:** `frontend/src/lib/search-history.ts`, `frontend/src/components/search-history.tsx`, `frontend/src/components/grammar-fixer.tsx`, `frontend/src/components/tenses-generator.tsx`, `README.md`
+
 ### 2026-08-18 — Groq 30/day with pasted token
 - **Type:** patch
 - **Version:** 1.5.0

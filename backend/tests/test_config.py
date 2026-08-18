@@ -61,25 +61,25 @@ class RouteTests(unittest.TestCase):
     def test_selected_first_then_default_order(self):
         self.assertEqual(
             provider_route("huggingface"),
-            ["huggingface", "ollama", "groq"],
+            ["huggingface", "groq"],
         )
         self.assertEqual(
             provider_route("groq"),
-            ["groq", "ollama", "huggingface"],
+            ["groq", "huggingface"],
         )
         self.assertEqual(provider_route("groq", exclusive=True), ["groq"])
 
 
 class FallbackTests(unittest.TestCase):
-    def test_ollama_success_skips_hf(self):
+    def test_no_provider_uses_huggingface(self):
         with patch("app.llm._skip_reason", return_value=None):
-            with patch("app.llm._ollama_chat", return_value="hello from ollama"):
-                with patch("app.llm._huggingface_chat") as hf:
+            with patch("app.llm._huggingface_chat", return_value="hello from hf") as hf:
+                with patch("app.llm._ollama_chat") as ollama:
                     with patch("app.llm._groq_chat") as groq:
                         content, provider = chat([{"role": "user", "content": "hi"}])
-        self.assertEqual(content, "hello from ollama")
-        self.assertEqual(provider, "ollama")
-        hf.assert_not_called()
+        self.assertEqual(content, "hello from hf")
+        self.assertEqual(provider, "huggingface")
+        ollama.assert_not_called()
         groq.assert_not_called()
 
     def test_selected_hf_skips_ollama_first(self):

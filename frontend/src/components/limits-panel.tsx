@@ -16,6 +16,7 @@ function QuotaCard({
   serverConfigured,
   row,
   barClass,
+  fallbackLimit = 30,
 }: {
   title: string;
   uncapped: boolean;
@@ -23,8 +24,9 @@ function QuotaCard({
   serverConfigured: boolean;
   row: ProviderLimit | undefined;
   barClass: string;
+  fallbackLimit?: number;
 }) {
-  const limit = row?.limit ?? 30;
+  const limit = row?.limit ?? fallbackLimit;
   const used = row?.used ?? 0;
   const remaining = row?.remaining ?? Math.max(0, limit - used);
   const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
@@ -116,8 +118,8 @@ export function LimitsPanel({
       <p className="text-sm text-zinc-400">
         Groq is limited to 30 successful Grammar, Tenses, and Explain generations
         per UTC day (this browser and your IP), whether you paste your own Groq
-        key or use the server key. Hugging Face is capped only on the shared
-        server token — your own HF key is uncapped. Cache hits do not count.
+        key or use the server key. Hugging Face is capped at 50/day on the shared
+        server token only — your own HF key is uncapped. Cache hits do not count.
       </p>
       {error && <p className="text-sm text-red-400">{error}</p>}
       <QuotaCard
@@ -127,6 +129,7 @@ export function LimitsPanel({
         serverConfigured={hfConfigured}
         row={data?.huggingface}
         barClass="bg-blue-500"
+        fallbackLimit={50}
       />
       <QuotaCard
         title="Groq"

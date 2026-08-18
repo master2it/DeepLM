@@ -26,7 +26,7 @@ import { APP_VERSION } from "@/lib/version";
 
 export default function HomePage() {
   const [health, setHealth] = useState<HealthPayload | null>(null);
-  const [provider, setProvider] = useState<ProviderId>("ollama");
+  const [provider, setProvider] = useState<ProviderId>("huggingface");
   const [groqApiKey, setGroqApiKey] = useState("");
   const [hfApiKey, setHfApiKey] = useState("");
 
@@ -77,14 +77,18 @@ export default function HomePage() {
           <div className="flex flex-wrap gap-2">
             <Badge
               className={
-                health.ollama
-                  ? "border-emerald-700 bg-emerald-950 text-emerald-300"
-                  : "border-red-700 bg-red-950 text-red-300"
+                health.ollama_enabled
+                  ? health.ollama
+                    ? "border-emerald-700 bg-emerald-950 text-emerald-300"
+                    : "border-red-700 bg-red-950 text-red-300"
+                  : "border-zinc-700 bg-zinc-900 text-zinc-500"
               }
             >
-              {health.ollama
-                ? `Ollama: ${health.ollama_model}`
-                : "Ollama: offline"}
+              {!health.ollama_enabled
+                ? "Ollama: disabled"
+                : health.ollama
+                  ? `Ollama: ${health.ollama_model}`
+                  : "Ollama: offline"}
             </Badge>
             <Badge
               className={
@@ -111,8 +115,8 @@ export default function HomePage() {
         <TabsList className="h-fit fixed inset-x-0 bottom-0 z-50 border-t border-zinc-800 bg-zinc-900/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:static sm:z-auto sm:border-0 sm:bg-zinc-800 sm:pb-1 sm:backdrop-blur-none">
           <TabsTrigger value="grammar">
             <SpellCheck className="size-5 sm:hidden" aria-hidden />
-            <span className="sm:hidden">Grammar</span>
-            <span className="hidden sm:inline">Grammar/Spell Fixer</span>
+            <span className="sm:hidden">Translate</span>
+            <span className="hidden sm:inline">Translate / Grammar/Spell Fixer</span>
           </TabsTrigger>
           <TabsTrigger value="tenses">
             <BookOpen className="size-5 sm:hidden" aria-hidden />

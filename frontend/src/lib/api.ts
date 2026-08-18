@@ -61,12 +61,16 @@ export type LanguagesPayload = {
   default_tense_language?: string;
   tense_counts?: Partial<Record<TenseLanguage, number>>;
   german_tenses?: { key: GermanTense; label: string }[];
+  max_input_chars?: number;
 };
+
+export const MAX_INPUT_CHARS = 1000;
 
 export type ProviderInfo = {
   id: ProviderId;
   label: string;
   available: boolean;
+  enabled?: boolean;
   model: string;
 };
 
@@ -74,6 +78,7 @@ export type HealthPayload = {
   ok: boolean;
   version?: string;
   ollama: boolean;
+  ollama_enabled?: boolean;
   hf_configured: boolean;
   groq_configured: boolean;
   ollama_model: string;
@@ -90,19 +95,29 @@ async function parseError(res: Response): Promise<string> {
   try {
     const data = await res.json();
     if (typeof data?.detail === "string") return data.detail;
+    if (Array.isArray(data?.detail)) {
+      const first = data.detail[0];
+      if (typeof first?.msg === "string") return first.msg;
+    }
     return JSON.stringify(data);
   } catch {
     return res.statusText;
   }
 }
 
+export const DEFAULT_PROVIDER: ProviderId = "huggingface";
+
 export function readStoredProvider(): ProviderId {
-  if (typeof window === "undefined") return "ollama";
+  if (typeof window === "undefined") return DEFAULT_PROVIDER;
   const value = window.localStorage.getItem(PROVIDER_STORAGE_KEY);
-  if (value === "huggingface" || value === "groq" || value === "ollama") {
+  if (value === "ollama") {
+    window.localStorage.setItem(PROVIDER_STORAGE_KEY, DEFAULT_PROVIDER);
+    return DEFAULT_PROVIDER;
+  }
+  if (value === "huggingface" || value === "groq") {
     return value;
   }
-  return "ollama";
+  return DEFAULT_PROVIDER;
 }
 
 export function writeStoredProvider(provider: ProviderId) {

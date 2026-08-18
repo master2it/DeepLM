@@ -40,11 +40,11 @@ DeepLM is a small, self-hostable language-learning tool: fix a sentence in sever
 
 | Area | What you get |
 | --- | --- |
-| **Grammar / spell fixer** | Default pair English → Persian. Three styles (friendly, formal, everyday). German ↔ Persian uses *du/Sie* and *تو/شما*. |
-| **Tenses** | English: 12 tenses. German: 6 (Präsens, Präteritum, Perfekt, Plusquamperfekt, Futur I, Futur II). Persian gloss on every card. |
+| **Grammar / spell fixer** | Tab **Translate / Grammar/Spell Fixer**. Default pair English → Persian. Three styles. Max 1000 characters. Recent searches stay in this browser. |
+| **Tenses** | English: 12 tenses. German: 6 (Präsens, Präteritum, Perfekt, Plusquamperfekt, Futur I, Futur II). Persian gloss on every card. Recent searches stay in this browser. |
 | **Tense explanation** | Per-tense teaching notes and examples (cached in Redis like grammar/tenses). |
-| **Providers** | Settings pick is **exclusive**: Ollama, Hugging Face, or Groq — no silent vendor fallback. |
-| **Limits** | Groq: **30/UTC day** for grammar, tenses, and explain, with your key **or** the server key. Hugging Face: 30/day on the shared server token only; your own HF key is uncapped. Counted by browser id **and** IP. Cache hits do not count. |
+| **Providers** | Default is **Hugging Face**. Groq is optional. **Ollama is disabled** for now (`OLLAMA_ENABLED=false`). A selected provider is exclusive (no silent vendor fallback). |
+| **Limits** | Groq: **30/UTC day** for grammar, tenses, and explain, with your key **or** the server key. Hugging Face: **50/day** on the shared server token only; your own HF key is uncapped. Counted by browser id **and** IP. Cache hits do not count. |
 | **PWA** | Installable on HTTPS (manifest, service worker, header Install button). |
 | **Changelog** | Versions tab is generated from [`CHANGELOG.md`](CHANGELOG.md). |
 
@@ -156,8 +156,8 @@ Copy [`.env.example`](.env.example). Important variables:
 
 | Variable | Purpose |
 | --- | --- |
-| `HF_TOKEN` / `GROQ_API_KEY` | Server default keys. Groq is always 30/day (pasted or server). HF is 30/day only for the server token. |
-| `HF_DEFAULT_DAILY_LIMIT` / `GROQ_DEFAULT_DAILY_LIMIT` | Default `30`. |
+| `HF_TOKEN` / `GROQ_API_KEY` | Server default keys. Groq is always 30/day (pasted or server). HF is 50/day only for the server token. |
+| `HF_DEFAULT_DAILY_LIMIT` / `GROQ_DEFAULT_DAILY_LIMIT` | Defaults `50` (HF server token) and `30` (Groq). |
 | `OLLAMA_BASE_URL` / `OLLAMA_MODEL` | Local model (`deepseek-r1` by default). |
 | `HF_CHAT_MODEL` / `GROQ_MODEL` | Defaults: `Qwen/Qwen2.5-72B-Instruct`, `openai/gpt-oss-120b`. |
 | `REDIS_URL` / `REDIS_PRIVATE_URL` | Cache + quotas. Private URL is preferred on Railway. |
@@ -187,7 +187,7 @@ Generation endpoints accept `provider`, optional `hf_api_key` / `groq_api_key`, 
 ### LLM routing
 
 1. If Settings (or the request) names a provider, **only that provider** runs.
-2. If no provider is sent, try Ollama (`think: false`), then Hugging Face, then Groq.
+2. If no provider is sent, try Hugging Face, then Groq. Ollama is skipped while `OLLAMA_ENABLED` is false.
 3. Leftover `<think>` blocks are stripped from replies.
 4. An explicit Groq / HF / Ollama choice fails closed if that provider is missing or errors.
 5. Groq generations (your key or the server key) and default-key Hugging Face generations require Redis (503 if Redis is down) so the 30/day cap can be enforced.

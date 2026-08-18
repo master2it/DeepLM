@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 import unicodedata
 
@@ -13,7 +12,7 @@ from app.constants import (
     GERMAN_TENSES,
     TENSE_LANGUAGES,
 )
-from app.jsonutil import extract_json
+from app.jsonutil import parse_model_json
 from app.llm import LLMError, chat
 
 GERMAN_TENSE_RULES = """
@@ -204,7 +203,7 @@ Exactly 12 objects, in the order listed above.
             groq_api_key=groq_api_key,
             hf_api_key=hf_api_key,
         )
-        data = json.loads(extract_json(content))
+        data = parse_model_json(content)
         if isinstance(data, dict) and "error" in data:
             return data
         return {
@@ -282,7 +281,7 @@ Output ONLY a valid JSON OBJECT:
             groq_api_key=groq_api_key,
             hf_api_key=hf_api_key,
         )
-        data = json.loads(extract_json(content))
+        data = parse_model_json(content)
         if not isinstance(data, dict):
             return {"error": "Unexpected model response."}
         examples = []

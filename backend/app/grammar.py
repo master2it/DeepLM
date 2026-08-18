@@ -18,7 +18,7 @@ from app.constants import (
     _READY_FIRST_PERSON_RE,
     native_target_label,
 )
-from app.jsonutil import extract_json
+from app.jsonutil import parse_model_json
 from app.llm import LLMError, chat
 
 
@@ -158,7 +158,10 @@ Also:
 - grammar_notes: briefly explain grammar mistakes (or "").
 - subject_reading: short note like "implicit inanimate 'it' (will be ready)" or "explicit speaker".
 
-Output ONLY valid JSON (no markdown, no commentary):
+Output ONLY valid JSON (no markdown, no commentary).
+Escape every double quote inside string values as \\".
+Use \\n for line breaks inside strings — never a raw newline.
+Keep each "from"/"to" value complete; do not truncate JSON.
 {{
     "detected_lang": "<detected language name>",
     "subject_reading": "<how you read omitted/explicit subjects>",
@@ -199,7 +202,7 @@ def get_styled_translations_from_ai(
     src_hint = from_lang if from_lang in TARGET_LANGUAGES else DEFAULT_GRAMMAR_FROM
     tgt = to_lang if to_lang in TARGET_LANGUAGES else DEFAULT_GRAMMAR_TO
     wants_translation = src_hint != tgt
-    used_provider = "ollama"
+    used_provider = "huggingface"
 
     def _once(retry_feedback=None):
         nonlocal used_provider
@@ -217,12 +220,12 @@ def get_styled_translations_from_ai(
                 {"role": "user", "content": user_msg},
             ],
             temperature=0.15,
-            max_tokens=3000,
+            max_tokens=8192,
             provider=provider,
             groq_api_key=groq_api_key,
             hf_api_key=hf_api_key,
         )
-        raw = json.loads(extract_json(content))
+        raw = parse_model_json(content)
         parsed = parse_styled_translation_response(
             raw,
             src_hint=src_hint,
@@ -247,6 +250,25 @@ def get_styled_translations_from_ai(
             )
         result["provider"] = used_provider
         return result
+    except json.JSONDecodeError:
+        try:
+            result = _once(
+                retry_feedback=(
+                    "Your previous reply was not valid JSON (broken quotes or truncated). "
+                    "Reply with one complete JSON object only. Escape quotes as \\\". "
+                    "Use \\n for line breaks inside strings."
+                )
+            )
+            if "error" not in result:
+                result["provider"] = used_provider
+            return result
+        except json.JSONDecodeError:
+            return {
+                "error": (
+                    "The model returned invalid JSON for this text. "
+                    "Try again, or shorten the input (max 1000 characters)."
+                )
+            }
     except LLMError as e:
         return {"error": str(e)}
     except Exception as e:

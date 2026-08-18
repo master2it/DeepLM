@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from app.config import get_settings
 from app.constants import (
+    MAX_INPUT_CHARS,
     DEFAULT_GRAMMAR_FROM,
     DEFAULT_GRAMMAR_TO,
     DEFAULT_TENSE_LANGUAGE,
@@ -50,7 +51,7 @@ ProviderField = Literal["ollama", "huggingface", "groq"]
 
 
 class GrammarRequest(BaseModel):
-    text: str = Field(..., min_length=1)
+    text: str = Field(..., min_length=1, max_length=MAX_INPUT_CHARS)
     from_lang: str = DEFAULT_GRAMMAR_FROM
     to_lang: str = DEFAULT_GRAMMAR_TO
     context: str | None = None
@@ -60,7 +61,7 @@ class GrammarRequest(BaseModel):
 
 
 class TensesRequest(BaseModel):
-    text: str = Field(..., min_length=1)
+    text: str = Field(..., min_length=1, max_length=MAX_INPUT_CHARS)
     language: str = DEFAULT_TENSE_LANGUAGE
     provider: ProviderField | None = None
     groq_api_key: str | None = None
@@ -83,6 +84,8 @@ def health():
         "ok": True,
         "version": APP_VERSION,
         "ollama": by_id["ollama"]["available"],
+        "ollama_enabled": get_settings().ollama_enabled,
+        "default_provider": "huggingface",
         "hf_configured": by_id["huggingface"]["available"],
         "groq_configured": by_id["groq"]["available"],
         "ollama_model": by_id["ollama"]["model"],
@@ -108,6 +111,7 @@ def changelog():
 @app.get("/api/languages")
 def languages():
     return {
+        "max_input_chars": MAX_INPUT_CHARS,
         "languages": GRAMMAR_LANGUAGES,
         "rtl": sorted(RTL_TARGETS),
         "default_from": DEFAULT_GRAMMAR_FROM,

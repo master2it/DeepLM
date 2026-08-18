@@ -27,10 +27,22 @@ import {
   readStoredTenseLanguage,
   writeStoredTenseLanguage,
   DEFAULT_TENSE_COUNTS,
+  MAX_INPUT_CHARS,
   type ProviderId,
   type TenseItem,
   type TenseLanguage,
 } from "@/lib/api";
+import {
+  formatHistoryTime,
+  SearchHistory,
+} from "@/components/search-history";
+import {
+  clearTensesHistory,
+  pushTensesHistory,
+  readTensesHistory,
+  removeTensesHistory,
+  type TensesHistoryItem,
+} from "@/lib/search-history";
 
 export function TensesGenerator({
   provider,
@@ -55,8 +67,10 @@ export function TensesGenerator({
   const [infoTitle, setInfoTitle] = useState("");
   const [infoBody, setInfoBody] = useState("");
   const [infoLoading, setInfoLoading] = useState(false);
+  const [history, setHistory] = useState<TensesHistoryItem[]>([]);
 
   useEffect(() => {
+    setHistory(readTensesHistory());
     setLanguage(readStoredTenseLanguage());
     fetchLanguages()
       .then((data) => {
@@ -84,6 +98,10 @@ export function TensesGenerator({
       setError("Please enter a text first.");
       return;
     }
+    if (text.trim().length > MAX_INPUT_CHARS) {
+      setError(`Text must be at most ${MAX_INPUT_CHARS} characters.`);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -94,8 +112,17 @@ export function TensesGenerator({
         language,
         hfApiKey
       );
-      setItems(data.items || []);
+      const itemsOut = data.items || [];
+      setItems(itemsOut);
       setUsedProvider(data.provider || null);
+      setHistory(
+        pushTensesHistory({
+          text: text.trim(),
+          language,
+          provider: data.provider,
+          items: itemsOut,
+        })
+      );
     } catch (err) {
       setItems([]);
       setError(err instanceof Error ? err.message : "Request failed");
@@ -164,9 +191,13 @@ export function TensesGenerator({
         </p>
         <Textarea
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => setText(e.target.value.slice(0, MAX_INPUT_CHARS))}
           placeholder={placeholder}
+          maxLength={MAX_INPUT_CHARS}
         />
+        <p className="text-xs text-zinc-500">
+          {text.length} / {MAX_INPUT_CHARS} characters
+        </p>
         <Button type="submit" disabled={loading} className="w-full sm:w-auto">
           {loading
             ? "Generating…"
@@ -174,6 +205,31 @@ export function TensesGenerator({
         </Button>
       </form>
       {error && <p className="text-sm text-red-400">{error}</p>}
+      <SearchHistory
+        items={history.map((item) => ({
+          id: item.id,
+          at: item.at,
+          title: item.text,
+          subtitle: `${item.language}${
+            item.provider ? ` · ${item.provider}` : ""
+          } · ${formatHistoryTime(item.at)}`,
+        }))}
+        onSelect={(id) => {
+          const item = history.find((row) => row.id === id);
+          if (!item) return;
+          setText(item.text);
+          setLanguage(item.language);
+          writeStoredTenseLanguage(item.language);
+          setItems(item.items);
+          setUsedProvider(item.provider || null);
+          setError(null);
+        }}
+        onRemove={(id) => setHistory(removeTensesHistory(id))}
+        onClear={() => {
+          clearTensesHistory();
+          setHistory([]);
+        }}
+      />
       {usedProvider && (
         <Badge>
           via {usedProvider} · {language} · {tenseCount} tenses

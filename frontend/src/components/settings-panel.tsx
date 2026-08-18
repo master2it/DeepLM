@@ -8,12 +8,12 @@ const OPTIONS: { id: ProviderId; title: string; hint: string }[] = [
   {
     id: "ollama",
     title: "Ollama",
-    hint: "Local model on this machine (default).",
+    hint: "Temporarily disabled. Hugging Face is the default provider.",
   },
   {
     id: "huggingface",
     title: "Hugging Face",
-    hint: "Cloud chat. Paste your HF token below, or leave empty to use the server HF_TOKEN (30 generations per UTC day).",
+    hint: "Default. Paste your HF token below, or leave empty to use the server HF_TOKEN (50 generations per UTC day).",
   },
   {
     id: "groq",
@@ -64,13 +64,17 @@ export function SettingsPanel({
               : opt.id === "huggingface"
                 ? hfReady
                 : Boolean(info?.available);
+          const ollamaOff = health?.ollama_enabled !== true;
+          const disabled = opt.id === "ollama" && ollamaOff;
           return (
             <label
               key={opt.id}
-              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 sm:p-4 ${
-                selected
-                  ? "border-blue-500 bg-zinc-800"
-                  : "border-zinc-700 bg-zinc-900"
+              className={`flex items-start gap-3 rounded-lg border p-3 sm:p-4 ${
+                disabled
+                  ? "cursor-not-allowed border-zinc-800 bg-zinc-950 opacity-60"
+                  : selected
+                    ? "cursor-pointer border-blue-500 bg-zinc-800"
+                    : "cursor-pointer border-zinc-700 bg-zinc-900"
               }`}
             >
               <input
@@ -78,6 +82,7 @@ export function SettingsPanel({
                 name="provider"
                 value={opt.id}
                 checked={selected}
+                disabled={disabled}
                 onChange={() => onChange(opt.id)}
                 className="mt-1"
               />
@@ -87,7 +92,11 @@ export function SettingsPanel({
                 {info && (
                   <span className="block text-xs text-zinc-500">
                     Model: {info.model} —{" "}
-                    {available ? "ready" : "not configured / offline"}
+                    {disabled
+                      ? "disabled"
+                      : available
+                        ? "ready"
+                        : "not configured / offline"}
                   </span>
                 )}
               </span>
@@ -118,7 +127,7 @@ export function SettingsPanel({
               huggingface.co/settings/tokens
             </a>
             . Leave empty to use the server{" "}
-            <code className="text-zinc-300">HF_TOKEN</code> (30 generations per
+            <code className="text-zinc-300">HF_TOKEN</code> (50 generations per
             UTC day — see the Limits tab).
           </p>
         </div>

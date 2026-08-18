@@ -70,7 +70,7 @@ def _daily_limit(kind: QuotaKind) -> int:
     settings = get_settings()
     if kind == "groq":
         return int(getattr(settings, "groq_default_daily_limit", 30) or 30)
-    return int(settings.hf_default_daily_limit or 30)
+    return int(settings.hf_default_daily_limit or 50)
 
 
 def _quota_keys(request: Request, kind: QuotaKind) -> tuple[str, str, int]:

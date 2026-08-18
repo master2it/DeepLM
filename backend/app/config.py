@@ -37,6 +37,7 @@ class Settings(BaseSettings):
         populate_by_name=True,
     )
 
+    ollama_enabled: bool = False
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "deepseek-r1"
     ollama_timeout_seconds: float = 120.0
@@ -79,7 +80,7 @@ class Settings(BaseSettings):
         ),
     )
     redis_ttl_seconds: int = 43200
-    hf_default_daily_limit: int = 30
+    hf_default_daily_limit: int = 50
     groq_default_daily_limit: int = 30
 
     @property
