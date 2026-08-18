@@ -29,7 +29,7 @@ const OPTIONS: {
     title: "Groq",
     tag: "Suggested · fast",
     tagClass: "border-emerald-700 bg-emerald-950 text-emerald-200",
-    hint: "Suggested when you want a quick reply. Paste your Groq API key or leave empty for the server key. Groq is always 30 generations per UTC day (your token or the server key).",
+    hint: "Suggested when you want a quick reply. Paste your Groq API key or leave empty for the server key. Groq is always 30 generations per UTC hour (your token or the server key).",
   },
 ];
 
@@ -172,7 +172,7 @@ export function SettingsPanel({
             </a>
             . Leave empty to use the server{" "}
             <code className="text-zinc-300">GROQ_API_KEY</code>. Groq is always
-            limited to 30 generations per UTC day (your key or the server key —
+            limited to 30 generations per UTC hour (your key or the server key —
             see the Limits tab).
           </p>
         </div>

@@ -44,7 +44,7 @@ DeepLM is a small, self-hostable language-learning tool: fix a sentence in sever
 | **Tenses** | English: 12 tenses. German: 6 (Präsens, Präteritum, Perfekt, Plusquamperfekt, Futur I, Futur II). Persian gloss on every card. Recent searches stay in this browser. |
 | **Tense explanation** | Per-tense teaching notes and examples (cached in Redis like grammar/tenses). |
 | **Providers** | Default is **Hugging Face**. Groq is optional. **Ollama is disabled** for now (`OLLAMA_ENABLED=false`). A selected provider is exclusive (no silent vendor fallback). |
-| **Limits** | Groq: **30/UTC day** for grammar, tenses, and explain, with your key **or** the server key. Hugging Face: **50/day** on the shared server token only; your own HF key is uncapped. Counted by browser id **and** IP. Cache hits do not count. |
+| **Limits** | Groq: **30/UTC hour** for grammar, tenses, and explain, with your key **or** the server key. Hugging Face: **50/day** on the shared server token only; your own HF key is uncapped. Counted by browser id **and** IP. Cache hits do not count. |
 | **PWA** | Installable on HTTPS (manifest, service worker, header Install button). |
 | **Changelog** | Versions tab is generated from [`CHANGELOG.md`](CHANGELOG.md). |
 
@@ -156,10 +156,10 @@ Copy [`.env.example`](.env.example). Important variables:
 
 | Variable | Purpose |
 | --- | --- |
-| `HF_TOKEN` / `GROQ_API_KEY` | Server default keys. Groq is always 30/day (pasted or server). HF is 50/day only for the server token. |
+| `HF_TOKEN` / `GROQ_API_KEY` | Server default keys. Groq is always 30/hour (pasted or server). HF is 50/day only for the server token. |
 | `HF_DEFAULT_DAILY_LIMIT` / `GROQ_DEFAULT_DAILY_LIMIT` | Defaults `50` (HF server token) and `30` (Groq). |
 | `OLLAMA_BASE_URL` / `OLLAMA_MODEL` | Local model (`deepseek-r1` by default). |
-| `HF_CHAT_MODEL` / `HF_PROVIDER` / `GROQ_MODEL` | HF default `Qwen/Qwen2.5-72B-Instruct` via Inference Providers (`together` recommended). Groq: `openai/gpt-oss-120b`. |
+| `HF_CHAT_MODEL` / `HF_PROVIDER` / `GROQ_MODEL` | HF default `Qwen/Qwen2.5-72B-Instruct` via Inference Providers (`HF_PROVIDER=auto` lets Hugging Face pick a host). Groq: `openai/gpt-oss-120b`. |
 | `REDIS_URL` / `REDIS_PRIVATE_URL` | Cache + quotas. Private URL is preferred on Railway. |
 | `REDIS_TTL_SECONDS` | Cache TTL (default `43200` = 12 hours). |
 | `CORS_ORIGINS` | Comma-separated browser origins. |
@@ -190,7 +190,7 @@ Generation endpoints accept `provider`, optional `hf_api_key` / `groq_api_key`, 
 2. If no provider is sent, try Hugging Face, then Groq. Ollama is skipped while `OLLAMA_ENABLED` is false.
 3. Leftover `<think>` blocks are stripped from replies.
 4. An explicit Groq / HF / Ollama choice fails closed if that provider is missing or errors.
-5. Groq generations (your key or the server key) and default-key Hugging Face generations require Redis (503 if Redis is down) so the 30/day cap can be enforced.
+5. Groq generations (your key or the server key) and default-key Hugging Face generations require Redis (503 if Redis is down) so the Groq 30/hour and HF 50/day caps can be enforced.
 
 ## Deployment
 

@@ -15,6 +15,8 @@ function QuotaCard({
   tagClass,
   uncapped,
   ownKey,
+  ownKeyLabel = "Your key (30/day)",
+  usedLabel = "Used today",
   serverConfigured,
   row,
   barClass,
@@ -25,6 +27,8 @@ function QuotaCard({
   tagClass?: string;
   uncapped: boolean;
   ownKey: boolean;
+  ownKeyLabel?: string;
+  usedLabel?: string;
   serverConfigured: boolean;
   row: ProviderLimit | undefined;
   barClass: string;
@@ -34,6 +38,9 @@ function QuotaCard({
   const used = row?.used ?? 0;
   const remaining = row?.remaining ?? Math.max(0, limit - used);
   const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const resets = row?.resets_at
+    ? new Date(row.resets_at).toUTCString()
+    : null;
   return (
     <Card>
       <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0">
@@ -45,7 +52,7 @@ function QuotaCard({
           {uncapped
             ? "Using your key (uncapped)"
             : ownKey
-              ? "Your key (30/day)"
+              ? ownKeyLabel
               : serverConfigured
                 ? "Using server key"
                 : "Server key not set"}
@@ -59,7 +66,7 @@ function QuotaCard({
           />
         </div>
         <p>
-          Used today:{" "}
+          {usedLabel}:{" "}
           <span className="font-medium text-zinc-100">
             {uncapped ? "—" : used}
           </span>{" "}
@@ -71,6 +78,7 @@ function QuotaCard({
             {uncapped ? "unlimited" : remaining}
           </span>
         </p>
+        {resets && <p className="text-zinc-500">Resets: {resets}</p>}
       </CardContent>
     </Card>
   );
@@ -116,15 +124,11 @@ export function LimitsPanel({
     };
   }, [ownHf, ownGroq]);
 
-  const resets = data?.resets_at
-    ? new Date(data.resets_at).toUTCString()
-    : "next UTC midnight";
-
   return (
     <div className="space-y-4">
       <p className="text-sm text-zinc-400">
         Groq is limited to 30 successful Grammar, Tenses, and Explain generations
-        per UTC day (this browser and your IP), whether you paste your own Groq
+        per UTC hour (this browser and your IP), whether you paste your own Groq
         key or use the server key. Hugging Face is capped at 50/day on the shared
         server token only — your own HF key is uncapped. Cache hits do not count.
       </p>
@@ -146,11 +150,12 @@ export function LimitsPanel({
         tagClass="border-emerald-700 bg-emerald-950 text-emerald-200"
         uncapped={false}
         ownKey={ownGroq}
+        ownKeyLabel="Your key (30/hour)"
+        usedLabel="Used this hour"
         serverConfigured={groqConfigured}
         row={data?.groq}
         barClass="bg-emerald-500"
       />
-      <p className="text-sm text-zinc-500">Resets: {resets}</p>
       {data && !data.redis && (
         <p className="text-sm text-amber-400">
           Redis is offline. Groq generations and default-key Hugging Face

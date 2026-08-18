@@ -28,7 +28,7 @@ services:
       HF_TOKEN: ${HF_TOKEN:-}
       HF_DEFAULT_DAILY_LIMIT: ${HF_DEFAULT_DAILY_LIMIT:-50}
       HF_CHAT_MODEL: ${HF_CHAT_MODEL:-Qwen/Qwen2.5-72B-Instruct}
-      HF_PROVIDER: ${HF_PROVIDER:-together}
+      HF_PROVIDER: ${HF_PROVIDER:-auto}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,https://deep-lm.vercel.app}

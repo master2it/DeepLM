@@ -28,6 +28,20 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+### 2026-08-18 — HF provider auto-select for Qwen 72B
+- **Type:** patch
+- **Version:** Unreleased
+- **Summary:** Hugging Face chat defaults to `HF_PROVIDER=auto` instead of Together. Provider-not-supported errors fall through to other hosts.
+- **Why:** bug
+- **Files:** `backend/app/llm.py`, `backend/app/config.py`, `.env.example`, `railway.toml`, `docker-compose.yml`, `README.md`
+
+### 2026-08-18 — Groq 30/hour instead of 30/day
+- **Type:** patch
+- **Version:** Unreleased
+- **Summary:** Groq's 30-generation cap (pasted key or server key) now resets every UTC hour. Hugging Face stays 50/day on the shared token.
+- **Why:** feature
+- **Files:** `backend/app/quota.py`, `backend/app/config.py`, `backend/tests/test_quota.py`, `frontend/src/components/limits-panel.tsx`, `frontend/src/components/settings-panel.tsx`, `frontend/src/lib/api.ts`, `.env.example`, `README.md`
+
 ### 2026-08-18 — Two-column tense cards with three click examples
 - **Type:** patch
 - **Version:** Unreleased

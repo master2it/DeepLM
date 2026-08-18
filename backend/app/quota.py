@@ -1,4 +1,4 @@
-"""Daily quota for shared server HF/Groq tokens (IP + browser id)."""
+"""Daily HF quota and hourly Groq quota (IP + browser id)."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def default_quota_kind(
 ) -> QuotaKind | None:
     if uses_default_hf(provider, hf_api_key):
         return "hf"
-    # Groq free-tier is 30/day even with a pasted token.
+    # Groq is capped at 30/hour even with a pasted token.
     if (provider or "") == "groq":
         return "groq"
     return None
@@ -49,6 +49,20 @@ def utc_midnight_ttl() -> tuple[str, int, datetime]:
     )
     ttl = max(60, int((resets - now).total_seconds()))
     return now.strftime("%Y-%m-%d"), ttl, resets
+
+
+def utc_hour_ttl() -> tuple[str, int, datetime]:
+    now = datetime.now(timezone.utc)
+    hour_start = now.replace(minute=0, second=0, microsecond=0)
+    resets = hour_start + timedelta(hours=1)
+    ttl = max(60, int((resets - now).total_seconds()))
+    return now.strftime("%Y-%m-%dT%H"), ttl, resets
+
+
+def _quota_window(kind: QuotaKind) -> tuple[str, int, datetime]:
+    if kind == "groq":
+        return utc_hour_ttl()
+    return utc_midnight_ttl()
 
 
 def client_ip(request: Request) -> str:
@@ -81,10 +95,10 @@ def _daily_limit(kind: QuotaKind) -> int:
 
 
 def _quota_keys(request: Request, kind: QuotaKind) -> tuple[str, str, int]:
-    day, ttl, _ = utc_midnight_ttl()
+    bucket, ttl, _ = _quota_window(kind)
     prefix = "hfquota" if kind == "hf" else "groqquota"
-    ip_key = f"deeplm:{prefix}:{day}:ip:{client_ip(request)}"
-    cid_key = f"deeplm:{prefix}:{day}:cid:{client_id(request)}"
+    ip_key = f"deeplm:{prefix}:{bucket}:ip:{client_ip(request)}"
+    cid_key = f"deeplm:{prefix}:{bucket}:cid:{client_id(request)}"
     return ip_key, cid_key, ttl
 
 
@@ -106,11 +120,14 @@ def _kind_snapshot(request: Request, kind: QuotaKind, *, using_default_key: bool
     counts = peek_counts(request, kind)
     used = max(counts) if counts else 0
     remaining = max(0, limit - used)
+    _, _, resets = _quota_window(kind)
     return {
         "limit": limit,
         "used": used,
         "remaining": remaining,
         "using_default_key": using_default_key,
+        "period": "hour" if kind == "groq" else "day",
+        "resets_at": resets.isoformat().replace("+00:00", "Z"),
     }
 
 
@@ -137,7 +154,7 @@ def assert_can_generate(request: Request, kind: QuotaKind) -> None:
     if not redis_reachable():
         if kind == "groq":
             detail = (
-                "Redis is required to enforce the Groq 30/day limit "
+                "Redis is required to enforce the Groq 30/hour limit "
                 "(your key or the server key). Try again when Redis is up."
             )
         else:
@@ -150,8 +167,8 @@ def assert_can_generate(request: Request, kind: QuotaKind) -> None:
     if counts is not None and max(counts) >= limit:
         if kind == "groq":
             detail = (
-                f"Daily Groq limit of {limit} generations reached "
-                "(your key or the server key). Wait until UTC midnight. "
+                f"Hourly Groq limit of {limit} generations reached "
+                "(your key or the server key). Wait until the next UTC hour. "
                 "Repeat searches already in cache do not count."
             )
         else:

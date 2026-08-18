@@ -13,8 +13,11 @@ if str(ROOT) not in sys.path:
 from unittest.mock import MagicMock, patch
 
 from app.quota import (  # noqa: E402
+    _quota_keys,
     consume,
     default_quota_kind,
+    utc_hour_ttl,
+    utc_midnight_ttl,
     uses_default_groq,
     uses_default_hf,
 )
@@ -42,6 +45,32 @@ class DefaultKeyQuotaTests(unittest.TestCase):
         self.assertIsNone(default_quota_kind("huggingface", "hf_x", None))
         self.assertEqual(default_quota_kind("groq", None, "gsk_x"), "groq")
         self.assertIsNone(default_quota_kind("ollama", None, None))
+
+
+class QuotaWindowTests(unittest.TestCase):
+    def test_hour_bucket_is_utc_hour(self):
+        bucket, ttl, resets = utc_hour_ttl()
+        self.assertRegex(bucket, r"^\d{4}-\d{2}-\d{2}T\d{2}$")
+        self.assertGreaterEqual(ttl, 60)
+        self.assertLessEqual(ttl, 3600)
+        self.assertEqual(resets.minute, 0)
+        self.assertEqual(resets.second, 0)
+
+    def test_groq_keys_use_hour_hf_keys_use_day(self):
+        request = MagicMock()
+        request.headers.get.side_effect = lambda name, default="": {
+            "x-forwarded-for": "203.0.113.9",
+            "X-Client-Id": "browser-1",
+        }.get(name, default)
+        groq_ip, groq_cid, groq_ttl = _quota_keys(request, "groq")
+        hf_ip, _hf_cid, _hf_ttl = _quota_keys(request, "hf")
+        hour, _, _ = utc_hour_ttl()
+        day, _, _ = utc_midnight_ttl()
+        self.assertIn(f":{hour}:", groq_ip)
+        self.assertIn(f":{hour}:", groq_cid)
+        self.assertIn(f":{day}:", hf_ip)
+        self.assertNotIn("T", hf_ip.split("hfquota:")[1].split(":ip:")[0])
+        self.assertLessEqual(groq_ttl, 3600)
 
 
 class FakeRedis:

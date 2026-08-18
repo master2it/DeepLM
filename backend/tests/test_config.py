@@ -12,7 +12,13 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from app.config import Settings, mask_secret  # noqa: E402
-from app.llm import LLMError, chat, provider_route, strip_thinking  # noqa: E402
+from app.llm import (  # noqa: E402
+    LLMError,
+    _hf_provider_candidates,
+    chat,
+    provider_route,
+    strip_thinking,
+)
 
 
 class MaskSecretTests(unittest.TestCase):
@@ -68,6 +74,23 @@ class RouteTests(unittest.TestCase):
             ["groq", "huggingface"],
         )
         self.assertEqual(provider_route("groq", exclusive=True), ["groq"])
+
+
+class HfProviderCandidateTests(unittest.TestCase):
+    def test_auto_is_first_when_settings_say_auto(self):
+        with patch("app.llm.get_settings") as mocked:
+            mocked.return_value.hf_provider = "auto"
+            names = _hf_provider_candidates(None)
+        self.assertEqual(names[0], "auto")
+        self.assertIn("fireworks-ai", names)
+        self.assertIn("deepinfra", names)
+
+    def test_explicit_together_still_tries_auto_next(self):
+        with patch("app.llm.get_settings") as mocked:
+            mocked.return_value.hf_provider = "auto"
+            names = _hf_provider_candidates("together")
+        self.assertEqual(names[0], "together")
+        self.assertEqual(names[1], "auto")
 
 
 class FallbackTests(unittest.TestCase):

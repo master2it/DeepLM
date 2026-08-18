@@ -199,6 +199,8 @@ export type ProviderLimit = {
   used: number;
   remaining: number;
   using_default_key: boolean;
+  period?: "day" | "hour";
+  resets_at?: string;
 };
 
 export type LimitsPayload = {
