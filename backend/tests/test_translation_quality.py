@@ -171,6 +171,8 @@ class PromptArchitectureTests(unittest.TestCase):
         )
         self.assertIn("MUST be meaningfully different", system)
         self.assertIn("do NOT auto-casualize", system)
+        self.assertIn("Do NOT simply copy Native", system)
+        self.assertIn("HARD RULE", system)
 
 
 class ParseContractTests(unittest.TestCase):
@@ -214,6 +216,52 @@ class ParseContractTests(unittest.TestCase):
         )
         self.assertEqual(parsed["grammarNotes"][0]["original"], "I am agree")
         self.assertIn("I agree", parsed["grammar_notes"])
+
+
+class StyleDifferentiationTests(unittest.TestCase):
+    def test_flags_identical_native_and_friendly(self):
+        result = {
+            "native": {"from": "", "to": "Could you send me the file today please."},
+            "friendly": {"from": "", "to": "Could you send me the file today please."},
+            "professional": {
+                "from": "",
+                "to": "Please send the file today so I can review it before the meeting.",
+            },
+        }
+        feedback = grammar.styles_too_similar_feedback(
+            result, wants_translation=True
+        )
+        self.assertIsNotNone(feedback)
+        self.assertIn("Friendly", feedback)
+
+    def test_allows_distinct_versions(self):
+        result = {
+            "native": {
+                "from": "",
+                "to": "Hey, I wanted to ask if you could send me the file today?",
+            },
+            "friendly": {
+                "from": "",
+                "to": "Hey, can you send me the file today? I wanna look it over before tomorrow's meeting.",
+            },
+            "professional": {
+                "from": "",
+                "to": "Could you please send me the file today? I need to review it before tomorrow's meeting.",
+            },
+        }
+        self.assertIsNone(
+            grammar.styles_too_similar_feedback(result, wants_translation=True)
+        )
+
+    def test_skips_very_short_texts(self):
+        result = {
+            "native": {"from": "Thanks.", "to": ""},
+            "friendly": {"from": "Thanks.", "to": ""},
+            "professional": {"from": "Thank you.", "to": ""},
+        }
+        self.assertIsNone(
+            grammar.styles_too_similar_feedback(result, wants_translation=False)
+        )
 
     def test_best_version_falls_back_to_canonical(self):
         raw = {

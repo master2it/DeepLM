@@ -161,14 +161,13 @@ The goal is "understand what I mean and make me sound like a native speaker."
 Target language: {target_language}
 Target locale/dialect: {target_locale}
 
-The three rewrites MUST be meaningfully different — not three textbook clones.
-- native: most natural version a local in {target_locale} would actually use.
-  Preserve the original tone (do NOT auto-casualize; do NOT make it more formal).
-  No unnecessarily sophisticated vocabulary.
-- friendly: more relaxed and conversational. Contractions and everyday phrasing.
-  Do not add slang unnecessarily.
-- professional: workplace-appropriate but human. No corporate buzzwords,
-  no academic stiffness. A real professional from that locale.
+The three rewrites MUST be meaningfully different — not three textbook clones
+and not small word substitutions of the same sentence.
+- native: most natural version a local in {target_locale} would actually use,
+  keeping the user's ORIGINAL tone (do NOT auto-casualize; do NOT make it more formal).
+- friendly: clearly more relaxed than Native (Slack/WhatsApp). Do NOT copy Native.
+- professional: clearly more workplace-appropriate than Native. Restructure; do not
+  only swap synonyms. No "I would like to kindly request...".
 - grammar_notes: array of {{"original","correction","explanation"}} for meaningful
   issues only. If none, use one item with explanation that there were no meaningful
   grammar mistakes (original/correction empty).
@@ -184,6 +183,48 @@ Example of intent (do this class of rewrite, not these exact strings):
 "I want say him that I can't come tomorrow because I have some work."
 → NOT the literal patch "I want to tell him that I can't come tomorrow because I have some work."
 → YES "I want to tell him I can't make it tomorrow because I've got some work to do."
+""".strip()
+
+STYLE_DIFFERENTIATION_RULES = """
+CRITICAL: The three outputs MUST be different. Do NOT generate them by small
+word substitutions. Each version has a different communication goal.
+
+Native:
+The most natural version while preserving the user's ORIGINAL tone.
+Do not make it more casual or more professional unless the original already has that tone.
+Think: what would a native speaker naturally say to express exactly what this user means?
+Example shape (do not copy unless it fits): "Hey, I wanted to ask if you could send me
+the file today? I need to look it over before our meeting tomorrow. If you're busy,
+no worries—just let me know."
+
+Friendly / Casual:
+This MUST sound noticeably more relaxed and conversational than Native.
+Allowed: contractions, fewer words, conversational expressions, phrasal verbs,
+shorter sentences, spoken phrasing, "no worries" / "yeah" / "sure" / "just" /
+"by the way" when appropriate. It should sound like Slack, WhatsApp, or iMessage
+to a friend or a coworker you know well. Do NOT simply copy Native.
+Example shape: "Hey, can you send me the file today? I wanna look it over before
+tomorrow's meeting. If you're busy, no worries—just let me know."
+
+Professional:
+This MUST sound appropriate for a professional workplace.
+Do NOT merely replace casual words with formal synonyms. Restructure naturally.
+Remove conversational filler. Be concise, polite, and direct. Avoid slang and
+excessive formality. Do NOT use old-fashioned phrases such as
+"I would like to kindly request...". Do NOT sound like a formal letter unless
+the context requires it.
+Example shape: "Could you please send me the file today? I need to review it
+before tomorrow's meeting. If you're unable to send it today, please let me know."
+
+HARD RULE — before returning, silently compare the three:
+1. Does Native preserve the original tone?
+2. Is Friendly/Casual clearly more conversational?
+3. Is Professional clearly more workplace-appropriate?
+4. Would a native speaker use each version in its intended context?
+If Native and Friendly/Casual are too similar, rewrite Friendly/Casual.
+If Native and Professional are too similar, rewrite Professional.
+Do NOT change the meaning just to make them different.
+Tone differentiation is REQUIRED. Meaning preservation is REQUIRED too.
 """.strip()
 
 GERMAN_PERSIAN_RULES = """

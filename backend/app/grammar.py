@@ -11,6 +11,7 @@ from app.constants import (
     LEGACY_STYLE_KEYS,
     SEMANTIC_ACCURACY_RULES,
     STRUCTURE_FORMAT_RULES,
+    STYLE_DIFFERENTIATION_RULES,
     STYLE_VARIANTS,
     TARGET_LANGUAGES,
     native_editor_instruction,
@@ -67,6 +68,68 @@ def flagged_invented_ready_subject(source_text: str, result: dict) -> bool:
     if not persian_implies_impersonal_ready(source_text):
         return False
     return any(target_invents_speaker_ready(t) for t in collect_style_to_texts(result))
+
+
+def _style_display_text(pair: dict | None, *, wants_translation: bool) -> str:
+    item = pair or {}
+    if wants_translation:
+        return (item.get("to") or item.get("from") or "").strip()
+    return (item.get("from") or item.get("to") or "").strip()
+
+
+def _norm_style(text: str) -> str:
+    return " ".join((text or "").lower().split())
+
+
+def _near_duplicate(a: str, b: str) -> bool:
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    sa, sb = set(a.split()), set(b.split())
+    if not sa or not sb:
+        return False
+    overlap = len(sa & sb) / len(sa | sb)
+    shorter = min(len(a), len(b))
+    longer = max(len(a), len(b))
+    if shorter < 24:
+        return a == b
+    return overlap >= 0.9 and shorter / longer >= 0.85
+
+
+def styles_too_similar_feedback(result: dict, *, wants_translation: bool) -> str | None:
+    native = _norm_style(
+        _style_display_text(result.get("native"), wants_translation=wants_translation)
+    )
+    friendly = _norm_style(
+        _style_display_text(result.get("friendly"), wants_translation=wants_translation)
+    )
+    professional = _norm_style(
+        _style_display_text(
+            result.get("professional"), wants_translation=wants_translation
+        )
+    )
+    if max(len(native), len(friendly), len(professional)) < 24:
+        return None
+    if _near_duplicate(native, friendly):
+        return (
+            "HARD RULE FAILED: Native and Friendly/Casual are identical or nearly "
+            "identical. Rewrite Friendly/Casual so it is clearly more conversational "
+            "(Slack/WhatsApp: shorter, contractions, spoken phrasing). Do NOT copy Native. "
+            "Keep the same meaning and facts. Professional must stay workplace-appropriate."
+        )
+    if _near_duplicate(native, professional):
+        return (
+            "HARD RULE FAILED: Native and Professional are identical or nearly "
+            "identical. Rewrite Professional by restructuring for the workplace "
+            "(concise, polite, direct). Do NOT only swap synonyms. Keep the same meaning."
+        )
+    if _near_duplicate(friendly, professional):
+        return (
+            "HARD RULE FAILED: Friendly/Casual and Professional are nearly identical. "
+            "Make Friendly more spoken and Professional more workplace. Same meaning."
+        )
+    return None
 
 
 def _style_pair(item) -> dict[str, str]:
@@ -200,7 +263,7 @@ def build_styled_translation_prompt(
             f'"from" = natural rewrite of the input in {src_hint} '
             "(same enhanced source on all three).\n"
             f'"to" = Native / Friendly / Professional in {tgt} ({loc}). '
-            "They must not be clones.\n"
+            "They MUST be different communication styles, not word swaps.\n"
             "grammar_notes: JSON array of original/correction/explanation.\n"
             "Same who/what/when. Keep source layout. Short input → short output."
         )
@@ -208,8 +271,8 @@ def build_styled_translation_prompt(
         translation_block = (
             f"Stay in {src_hint} / {loc}. "
             'Put each version in "from" and set "to" to empty.\n'
-            "Native preserves tone; Friendly is more relaxed; "
-            "Professional is workplace-human."
+            "Native preserves original tone; Friendly is clearly more conversational; "
+            "Professional is clearly more workplace. Do not copy Native."
         )
 
     context_block = (
@@ -227,6 +290,9 @@ def build_styled_translation_prompt(
 
     system_prompt = f"""
 {editor}
+
+STYLE DIFFERENTIATION (mandatory):
+{STYLE_DIFFERENTIATION_RULES}
 
 SEMANTIC ACCURACY (mandatory):
 {SEMANTIC_ACCURACY_RULES}
@@ -334,6 +400,11 @@ def get_styled_translations_from_ai(
                     "and for pickup use 'come pick it up' / 'come by to collect it' / 'abholen'."
                 )
             )
+        similar = styles_too_similar_feedback(
+            result, wants_translation=wants_translation
+        )
+        if similar and "error" not in result:
+            result = _once(retry_feedback=similar)
         result["provider"] = used_provider
         return result
     except json.JSONDecodeError:

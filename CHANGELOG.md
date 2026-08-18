@@ -28,6 +28,13 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+### 2026-08-18 — Native / Casual / Professional must differ
+- **Type:** patch
+- **Version:** Unreleased
+- **Summary:** Prompt requires three distinct communication goals; near-identical Native/Friendly/Professional results are retried once.
+- **Why:** bug
+- **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`
+
 ### 2026-08-18 — Fix grammar.py SyntaxError on boot
 - **Type:** patch
 - **Version:** Unreleased
