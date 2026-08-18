@@ -223,20 +223,26 @@ export function GrammarFixer({
                 <CardHeader>
                   <CardTitle className="text-blue-400">{label}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 overflow-hidden text-sm">
-                  <p className="break-words">
+                <CardContent className="space-y-3 overflow-hidden text-sm">
+                  <div className="break-words whitespace-pre-wrap">
                     <span className="text-zinc-400">[From]: </span>
-                    <span dir={rtl.has(result.from_lang) ? "rtl" : "ltr"} className="inline">
+                    <span
+                      dir={rtl.has(result.from_lang) ? "rtl" : "ltr"}
+                      className="block whitespace-pre-wrap"
+                    >
                       {pair.from || "(empty)"}
                     </span>
-                  </p>
+                  </div>
                   {result.wants_translation && (
-                    <p className="break-words">
+                    <div className="break-words whitespace-pre-wrap">
                       <span className="text-zinc-400">[To]: </span>
-                      <span dir={rtl.has(result.to_lang) ? "rtl" : "ltr"} className="inline">
+                      <span
+                        dir={rtl.has(result.to_lang) ? "rtl" : "ltr"}
+                        className="block whitespace-pre-wrap"
+                      >
                         {pair.to || "(empty)"}
                       </span>
-                    </p>
+                    </div>
                   )}
                 </CardContent>
               </Card>

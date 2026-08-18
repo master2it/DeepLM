@@ -77,6 +77,7 @@ class PromptArchitectureTests(unittest.TestCase):
         )
         self.assertIn("canonical_meaning", system)
         self.assertIn("Do not invent explicit subjects", system)
+        self.assertIn("Never flatten", system)
         self.assertIn("American English", system)
         self.assertIn("{text}", user)
 

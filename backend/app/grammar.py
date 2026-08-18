@@ -9,6 +9,7 @@ from app.constants import (
     DEFAULT_GRAMMAR_TO,
     GERMAN_PERSIAN_RULES,
     SEMANTIC_ACCURACY_RULES,
+    STRUCTURE_FORMAT_RULES,
     STYLE_VARIANTS,
     TARGET_LANGUAGES,
     TEACHER_EDITOR_INSTRUCTION,
@@ -110,18 +111,21 @@ def build_styled_translation_prompt(
 
     translation_block = (
         f"The user asks for {tgt_label} output.\n"
-        f"1) Write canonical_meaning: one accurate neutral sentence in {tgt} ({tgt_label}).\n"
+        f"1) Write canonical_meaning in {tgt} ({tgt_label}): same facts AND the same "
+        f"layout as the source (greeting, paragraphs, list items on separate lines).\n"
         f'2) For each style, "from" = corrected/cleaned {src_hint} text in that tone;\n'
-        f'   "to" = the SAME meaning as canonical_meaning, restyled in {tgt_label} '
-        f"(Friendly/casual, Professional/formal, or Everyday/neutral).\n"
-        f"All three \"to\" lines must preserve identical who/what/when facts as canonical_meaning.\n"
+        f'   "to" = the SAME meaning and the SAME line-break structure as canonical_meaning, '
+        f"restyled in {tgt_label} (Friendly/casual, Professional/formal, or Everyday/neutral).\n"
+        f"All three \"to\" texts must preserve identical who/what/when facts as canonical_meaning.\n"
+        f"Do not merge a list of works into one consecutive paragraph.\n"
         f"Sound natural as spoken by a native — not stiff or word-for-word."
         if wants_translation
         else (
             "No target-language translation was requested. Keep styled rewrites in the source language.\n"
-            "1) Write canonical_meaning in the source language (neutral accurate reading).\n"
+            "1) Write canonical_meaning in the source language with the same layout "
+            "(greeting, paragraphs, list items on separate lines).\n"
             '2) Put each styled corrected version in "from" and set "to" to an empty string.\n'
-            "Styles change tone only; meaning must match canonical_meaning."
+            "Styles change tone only; meaning and line breaks must match canonical_meaning."
         )
     )
 
@@ -144,6 +148,9 @@ def build_styled_translation_prompt(
 SEMANTIC ACCURACY (mandatory):
 {SEMANTIC_ACCURACY_RULES}
 
+STRUCTURE AND FORMAT (mandatory):
+{STRUCTURE_FORMAT_RULES}
+
 Pipeline you MUST follow (internally, then output JSON only):
 1. Treat the input as {src_hint} (detect if the UI hint is wrong).
 2. Analyze whether subjects/objects are explicit or implicit.
@@ -165,7 +172,7 @@ Keep each "from"/"to" value complete; do not truncate JSON.
 {{
     "detected_lang": "<detected language name>",
     "subject_reading": "<how you read omitted/explicit subjects>",
-    "canonical_meaning": "<one accurate neutral reading in the target language>",
+    "canonical_meaning": "<same layout as source, in the target language>",
     "grammar_notes": "<brief notes or empty>",
     "friendly_casual": {{"from": "<corrected casual source>", "to": "<Friendly/casual {tgt} or empty>"}},
     "professional_formal": {{"from": "<corrected formal source>", "to": "<Professional/formal {tgt} or empty>"}},
@@ -177,6 +184,7 @@ Keep each "from"/"to" value complete; do not truncate JSON.
         user_msg = (
             f"Translate and fix this {src_hint} into {tgt_label}. "
             f"Then give Friendly/casual, Professional/formal, and Everyday/neutral versions in {tgt}. "
+            "Keep the same structure as the source (greeting, paragraph, then one list item per line). "
             "Explain grammar briefly in grammar_notes if needed.\n\n"
             "Text:\n{text}"
         )

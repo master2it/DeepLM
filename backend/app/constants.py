@@ -58,6 +58,7 @@ Rules:
 - Only correct and improve the sentence I send in that turn.
 - If there are grammar mistakes, explain them briefly and fix them naturally.
 - Keep the meaning and intent of the original text unchanged.
+- Keep the original structure and format (paragraphs, line breaks, greetings, titles, lists).
 - Do not add information that is not present in the original text.
 - Stay around B2 level unless the source is more advanced.
 """.strip()
@@ -108,6 +109,28 @@ Null-subject / pro-drop languages (especially Persian, Arabic, Turkish, Spanish,
 - Style variants must NOT change who/what the sentence is about.
 - Persian informal spelling: "اینده" → "آینده" (next / coming); "اماده" → "آماده".
   "هفته آینده" means "next week", not "this week".
+""".strip()
+
+STRUCTURE_FORMAT_RULES = """
+Preserve layout. Never flatten a structured message into one consecutive paragraph.
+
+Detect blocks in the source and keep the same block order in every "from" and "to":
+- Greeting or title on its own line (e.g. "Hi,")
+- Intro / body paragraph(s)
+- Blank line between sections (encode as \\n\\n in JSON)
+- A list of works or bullets: one item per line (encode as \\n between items)
+
+If lines after a colon or blank line are separate accomplishments (even without -, *, or •),
+they are a LIST. Do not join them with commas or "and" into running prose.
+
+Example shape to keep:
+Hi,\\n
+Yesterday I … page:\\n\\n
+Item one …\\n
+Item two …\\n
+Item three …
+
+canonical_meaning, "from", and "to" must all keep this shape. Tone may change; line breaks must not.
 """.strip()
 
 _READY_FIRST_PERSON_RE = re.compile(

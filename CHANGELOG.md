@@ -32,6 +32,13 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [1.5.0] — 2026-08-18 — minor
 
+### 2026-08-18 — Preserve source layout in Translate
+- **Type:** patch
+- **Version:** 1.5.0
+- **Summary:** Translate keeps greetings, paragraphs, and work lists on separate lines instead of flattening them into one paragraph. Results render with line breaks.
+- **Why:** bug
+- **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`, `frontend/src/components/grammar-fixer.tsx`
+
 ### 2026-08-18 — Groq 413 payload limit
 - **Type:** patch
 - **Version:** 1.5.0
