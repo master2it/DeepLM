@@ -9,7 +9,6 @@ import { LimitsPanel } from "@/components/limits-panel";
 import { TensesGenerator } from "@/components/tenses-generator";
 import { SettingsPanel } from "@/components/settings-panel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import {
   DEFAULT_GROQ_MODEL,
   fetchHealth,
@@ -19,7 +18,7 @@ import {
   readStoredGroqModel,
   readStoredHfKey,
   readStoredProvider,
-  shortModelName,
+  resolveGroqModels,
   writeStoredGroqKey,
   writeStoredGroqModel,
   writeStoredHfKey,
@@ -49,14 +48,18 @@ export default function HomePage() {
         if (cancelled) return;
         setHealth(healthPayload);
         setLanguages(languagesPayload);
-        const allowed = (healthPayload.groq_models || []).map((m) => m.id);
-        setGroqModel(readStoredGroqModel(allowed.length ? allowed : null));
+        const allowed = resolveGroqModels(healthPayload.groq_models).map(
+          (m) => m.id
+        );
+        setGroqModel(readStoredGroqModel(allowed));
       })
       .catch(() => {
         if (cancelled) return;
         setHealth(null);
         setLanguages(null);
-        setGroqModel(readStoredGroqModel());
+        setGroqModel(
+          readStoredGroqModel(resolveGroqModels().map((m) => m.id))
+        );
       });
     return () => {
       cancelled = true;
@@ -83,13 +86,9 @@ export default function HomePage() {
     writeStoredHfKey(next);
   }
 
-  const groqReady = Boolean(groqApiKey.trim()) || Boolean(health?.groq_configured);
-  const hfReady = Boolean(hfApiKey.trim()) || Boolean(health?.hf_configured);
-  const activeGroqLabel = shortModelName(groqModel, "gpt-oss-120b");
-
   return (
     <main className="mx-auto w-full max-w-6xl space-y-4 px-3 py-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:space-y-6 sm:px-4 sm:py-8 sm:pb-8">
-      <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+      <header>
         <div>
           <h1 className="flex flex-wrap items-baseline gap-2 text-xl font-bold sm:text-2xl">
             DeepLM
@@ -102,43 +101,6 @@ export default function HomePage() {
             <InstallButton />
           </div>
         </div>
-        {health && (
-          <div className="flex flex-wrap gap-2">
-            <Badge
-              className={
-                hfReady
-                  ? "border-emerald-700 bg-emerald-950 text-emerald-300"
-                  : "border-red-700 bg-red-950 text-red-300"
-              }
-            >
-              {hfReady
-                ? `${shortModelName(health.hf_model, "Qwen2.5-72B-Instruct")}: ready · slower`
-                : `${shortModelName(health.hf_model, "Qwen2.5-72B-Instruct")}: not set`}
-            </Badge>
-            <Badge
-              className={
-                hfReady
-                  ? "border-emerald-700 bg-emerald-950 text-emerald-300"
-                  : "border-red-700 bg-red-950 text-red-300"
-              }
-            >
-              {hfReady
-                ? `${shortModelName(health.deepseek_model, "DeepSeek-V4-Flash")}: ready · HF`
-                : `${shortModelName(health.deepseek_model, "DeepSeek-V4-Flash")}: not set`}
-            </Badge>
-            <Badge
-              className={
-                groqReady
-                  ? "border-emerald-700 bg-emerald-950 text-emerald-300"
-                  : "border-red-700 bg-red-950 text-red-300"
-              }
-            >
-              {groqReady
-                ? `${activeGroqLabel}: ready · Groq Free`
-                : `${activeGroqLabel}: not set`}
-            </Badge>
-          </div>
-        )}
       </header>
       <Tabs defaultValue="grammar">
         <TabsList className="h-fit fixed inset-x-0 bottom-0 z-50 border-t border-zinc-800 bg-zinc-900/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:static sm:z-auto sm:border-0 sm:bg-zinc-800 sm:pb-1 sm:backdrop-blur-none">

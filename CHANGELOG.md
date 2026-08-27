@@ -32,6 +32,34 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [1.6.0] — 2026-08-27 — minor
 
+### 2026-08-27 — Default grammar to_locale to first list option
+- **Type:** patch
+- **Version:** 1.6.0
+- **Summary:** When Locale is unset or not in the list, pick the first option for that language (e.g. American English) and always send it on grammar requests.
+- **Why:** bug
+- **Files:** `frontend/src/components/grammar-fixer.tsx`, `frontend/src/lib/api.ts`
+
+### 2026-08-27 — Remove header model status badges
+- **Type:** patch
+- **Version:** 1.6.0
+- **Summary:** Remove the header chips that showed Qwen / DeepSeek / Groq ready status.
+- **Why:** feature
+- **Files:** `frontend/src/app/page.tsx`
+
+### 2026-08-27 — Remove model tags in Settings and header
+- **Type:** patch
+- **Version:** 1.6.0
+- **Summary:** Drop badge labels (Slower, Groq Free, etc.) from Settings model cards and header status chips; chips show only model name + ready/not set.
+- **Why:** feature
+- **Files:** `frontend/src/components/settings-panel.tsx`, `frontend/src/app/page.tsx`
+
+### 2026-08-27 — List all Groq models as Settings radios
+- **Type:** patch
+- **Version:** 1.6.0
+- **Summary:** Settings shows every Groq Free chat model as its own selectable card (with Qwen/DeepSeek). Choosing one sets provider=groq and that model id; API key stays shared.
+- **Why:** feature
+- **Files:** `frontend/src/components/settings-panel.tsx`, `frontend/src/lib/api.ts`
+
 ### 2026-08-27 — Release 1.6.0
 - **Type:** release
 - **Version:** 1.6.0

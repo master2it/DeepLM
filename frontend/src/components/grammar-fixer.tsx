@@ -109,15 +109,23 @@ export function GrammarFixer({
     if (!languages) return;
     setFromLang(languages.default_from);
     setToLang(languages.default_to);
-    setToLocale(
-      languages.default_locales?.[languages.default_to] ||
-        languages.locales?.[languages.default_to]?.[0] ||
-        languages.default_to
-    );
+    setToLocale(defaultLocaleFor(languages, languages.default_to));
   }, [languages]);
 
   const rtl = new Set(meta?.rtl ?? ["Persian", "Arabic"]);
   const localeOptions = localesFor(meta, toLang);
+  const resolvedToLocale =
+    toLocale.trim() && localeOptions.includes(toLocale)
+      ? toLocale
+      : localeOptions[0] || defaultLocaleFor(meta, toLang);
+
+  useEffect(() => {
+    const options = localesFor(meta, toLang);
+    if (!options.length) return;
+    if (!toLocale.trim() || !options.includes(toLocale)) {
+      setToLocale(options[0]);
+    }
+  }, [meta, toLang, toLocale]);
 
   function changeToLang(next: string) {
     setToLang(next);
@@ -141,7 +149,7 @@ export function GrammarFixer({
         text: text.trim(),
         from_lang: fromLang,
         to_lang: toLang,
-        to_locale: toLocale,
+        to_locale: resolvedToLocale,
         provider,
         groq_api_key: groqApiKey,
         hf_api_key: hfApiKey,
@@ -153,7 +161,7 @@ export function GrammarFixer({
           text: text.trim(),
           from_lang: fromLang,
           to_lang: toLang,
-          to_locale: toLocale,
+          to_locale: resolvedToLocale,
           provider: data.provider,
           result: data,
         })
@@ -172,7 +180,7 @@ export function GrammarFixer({
     <form onSubmit={onSubmit} className="space-y-4">
       <p className="text-sm text-zinc-400">
         Understands what you mean, then Grammar Fix, Native, Friendly / Casual, and Professional in{" "}
-        {toLocale}.
+        {resolvedToLocale}.
         {(fromLang === "German" && toLang === "Persian") ||
         (fromLang === "Persian" && toLang === "German")
           ? " · German ↔ Persian (du/Sie and تو/شما)"
@@ -236,10 +244,7 @@ export function GrammarFixer({
         </div>
         <div className="w-full space-y-1 sm:min-w-44 sm:flex-1">
           <Label>Locale</Label>
-          <Select
-            value={localeOptions.includes(toLocale) ? toLocale : localeOptions[0]}
-            onValueChange={setToLocale}
-          >
+          <Select value={resolvedToLocale} onValueChange={setToLocale}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>

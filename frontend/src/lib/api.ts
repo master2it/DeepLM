@@ -21,6 +21,76 @@ export type GroqFreeModel = {
   tag?: string;
 };
 
+/** Local catalog so Settings always lists Groq Free chat models (API may refine). */
+export const GROQ_FREE_MODELS: GroqFreeModel[] = [
+  {
+    id: "openai/gpt-oss-120b",
+    label: "gpt-oss-120b",
+    rpm: 30,
+    rpd: 1000,
+    tpm: 8000,
+    tpd: 200000,
+    tag: "Default",
+  },
+  {
+    id: "openai/gpt-oss-20b",
+    label: "gpt-oss-20b",
+    rpm: 30,
+    rpd: 1000,
+    tpm: 8000,
+    tpd: 200000,
+  },
+  {
+    id: "openai/gpt-oss-safeguard-20b",
+    label: "gpt-oss-safeguard-20b",
+    rpm: 30,
+    rpd: 1000,
+    tpm: 8000,
+    tpd: 200000,
+  },
+  {
+    id: "qwen/qwen3.6-27b",
+    label: "qwen3.6-27b",
+    rpm: 30,
+    rpd: 1000,
+    tpm: 8000,
+    tpd: 200000,
+  },
+  {
+    id: "qwen/qwen3.8-27b",
+    label: "qwen3.8-27b",
+    rpm: 30,
+    rpd: 1000,
+    tpm: 8000,
+    tpd: 2000000,
+  },
+  {
+    id: "groq/compound",
+    label: "compound",
+    rpm: 30,
+    rpd: 250,
+    tpm: 70000,
+    tpd: null,
+    tag: "Agentic",
+  },
+  {
+    id: "groq/compound-mini",
+    label: "compound-mini",
+    rpm: 30,
+    rpd: 250,
+    tpm: 70000,
+    tpd: null,
+    tag: "Agentic",
+  },
+];
+
+export function resolveGroqModels(
+  fromHealth?: GroqFreeModel[] | null
+): GroqFreeModel[] {
+  if (fromHealth && fromHealth.length > 0) return fromHealth;
+  return GROQ_FREE_MODELS;
+}
+
 /** Short model id for UI (hide org / provider brand). */
 export function shortModelName(model?: string | null, fallback = "Model"): string {
   const raw = (model || "").trim();
@@ -399,8 +469,13 @@ export async function postGrammar(body: {
     method: "POST",
     headers: apiHeaders(true),
     body: JSON.stringify({
-      ...body,
       text: body.text.trim().toLowerCase(),
+      from_lang: body.from_lang,
+      to_lang: body.to_lang,
+      ...(body.to_locale?.trim()
+        ? { to_locale: body.to_locale.trim() }
+        : {}),
+      provider: body.provider,
       groq_api_key: body.groq_api_key?.trim() || undefined,
       hf_api_key: body.hf_api_key?.trim() || undefined,
       groq_model: body.groq_model?.trim() || undefined,

@@ -1,19 +1,10 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DEFAULT_GROQ_MODEL,
+  resolveGroqModels,
   shortModelName,
-  type GroqFreeModel,
   type HealthPayload,
   type ProviderId,
 } from "@/lib/api";
@@ -29,6 +20,20 @@ type Props = {
   onHfApiKeyChange: (key: string) => void;
   health: HealthPayload | null;
 };
+
+type ModelOption =
+  | {
+      kind: "provider";
+      id: "huggingface" | "deepseek";
+      title: string;
+      hint: string;
+    }
+  | {
+      kind: "groq";
+      id: string;
+      title: string;
+      hint: string;
+    };
 
 export function SettingsPanel({
   provider,
@@ -54,56 +59,51 @@ export function SettingsPanel({
     byId.deepseek?.model || health?.deepseek_model,
     "DeepSeek-V4-Flash"
   );
-  const groqModels: GroqFreeModel[] =
-    health?.groq_models?.length
-      ? health.groq_models
-      : [
-          {
-            id: DEFAULT_GROQ_MODEL,
-            label: "gpt-oss-120b",
-            rpm: 30,
-            rpd: 1000,
-            tpm: 8000,
-            tpd: 200000,
-            tag: "Default",
-          },
-        ];
+  const groqModels = resolveGroqModels(health?.groq_models);
   const selectedGroq =
     groqModels.find((m) => m.id === groqModel) || groqModels[0];
   const groqTitle = shortModelName(selectedGroq?.id, "gpt-oss-120b");
 
-  const options: {
-    id: ProviderId;
-    title: string;
-    tag?: string;
-    tagClass?: string;
-    hint: string;
-  }[] = [
+  const options: ModelOption[] = [
     {
+      kind: "provider",
       id: "huggingface",
       title: hfModel,
-      tag: "Slower · better text",
-      tagClass: "border-violet-700 bg-violet-950 text-violet-200",
       hint: "Default. Stronger, more careful wording — usually slower. Uses your Hugging Face token (or the server token: 50 generations per UTC day).",
     },
     {
+      kind: "provider",
       id: "deepseek",
       title: deepseekModel,
-      tag: "HF · fast MoE",
-      tagClass: "border-sky-700 bg-sky-950 text-sky-200",
       hint: "DeepSeek-V4-Flash via Hugging Face Inference Providers. Same HF token as above (50/day on the shared server token).",
     },
-    {
-      id: "groq",
-      title: groqTitle,
-      tag: "Groq Free",
-      tagClass: "border-emerald-700 bg-emerald-950 text-emerald-200",
-      hint: "Pick any Free-plan chat model below. Limits follow Groq Free RPM/RPD for that model (your key or the server key).",
-    },
+    ...groqModels.map((m) => ({
+      kind: "groq" as const,
+      id: m.id,
+      title: m.label,
+      hint: `${m.rpm} RPM · ${m.rpd} RPD${
+        m.tpm != null ? ` · ${m.tpm.toLocaleString()} TPM` : ""
+      }${m.tpd != null ? ` · ${m.tpd.toLocaleString()} TPD` : ""}.`,
+    })),
   ];
 
   const showHfKey = provider === "huggingface" || provider === "deepseek";
+  const showGroqKey = provider === "groq";
   const hfKeyLabel = provider === "deepseek" ? deepseekModel : hfModel;
+
+  function isSelected(opt: ModelOption): boolean {
+    if (opt.kind === "provider") return provider === opt.id;
+    return provider === "groq" && groqModel === opt.id;
+  }
+
+  function selectOption(opt: ModelOption) {
+    if (opt.kind === "provider") {
+      onChange(opt.id);
+      return;
+    }
+    onChange("groq");
+    onGroqModelChange(opt.id);
+  }
 
   return (
     <div className="space-y-4">
@@ -114,13 +114,13 @@ export function SettingsPanel({
       <fieldset className="space-y-3">
         <legend className="text-sm font-medium text-zinc-200">Models</legend>
         {options.map((opt) => {
-          const info = byId[opt.id];
-          const selected = provider === opt.id;
-          const available =
-            opt.id === "groq" ? groqReady : hfReady;
+          const selected = isSelected(opt);
+          const available = opt.kind === "groq" ? groqReady : hfReady;
+          const radioValue =
+            opt.kind === "provider" ? opt.id : `groq:${opt.id}`;
           return (
             <label
-              key={opt.id}
+              key={radioValue}
               className={`flex items-start gap-3 rounded-lg border p-3 sm:p-4 ${
                 selected
                   ? "cursor-pointer border-blue-500 bg-zinc-800"
@@ -129,25 +129,18 @@ export function SettingsPanel({
             >
               <input
                 type="radio"
-                name="provider"
-                value={opt.id}
+                name="model"
+                value={radioValue}
                 checked={selected}
-                onChange={() => onChange(opt.id)}
+                onChange={() => selectOption(opt)}
                 className="mt-1"
               />
               <span className="space-y-1">
-                <span className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{opt.title}</span>
-                  {opt.tag && (
-                    <Badge className={opt.tagClass}>{opt.tag}</Badge>
-                  )}
-                </span>
+                <span className="font-medium">{opt.title}</span>
                 <span className="block text-sm text-zinc-400">{opt.hint}</span>
-                {info && (
-                  <span className="block text-xs text-zinc-500">
-                    {available ? "ready" : "not configured / offline"}
-                  </span>
-                )}
+                <span className="block text-xs text-zinc-500">
+                  {available ? "ready" : "not configured / offline"}
+                </span>
               </span>
             </label>
           );
@@ -180,71 +173,41 @@ export function SettingsPanel({
           </p>
         </div>
       )}
-      {provider === "groq" && (
-        <div className="space-y-4 rounded-lg border border-zinc-700 bg-zinc-900 p-4">
-          <div className="space-y-2">
-            <Label htmlFor="groq-model">Groq Free model</Label>
-            <Select value={selectedGroq.id} onValueChange={onGroqModelChange}>
-              <SelectTrigger id="groq-model" className="mt-2">
-                <SelectValue placeholder="Choose a Groq model" />
-              </SelectTrigger>
-              <SelectContent>
-                {groqModels.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.label}
-                    {m.tag ? ` · ${m.tag}` : ""} · {m.rpm} RPM / {m.rpd} RPD
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-zinc-500">
-              Free-plan limits for {selectedGroq.label}:{" "}
-              <span className="text-zinc-300">
-                {selectedGroq.rpm} RPM · {selectedGroq.rpd} RPD
-                {selectedGroq.tpm != null
-                  ? ` · ${selectedGroq.tpm.toLocaleString()} TPM`
-                  : ""}
-                {selectedGroq.tpd != null
-                  ? ` · ${selectedGroq.tpd.toLocaleString()} TPD`
-                  : ""}
-              </span>
-              . Source:{" "}
-              <a
-                className="text-blue-400 underline"
-                href="https://console.groq.com/docs/rate-limits"
-                target="_blank"
-                rel="noreferrer"
-              >
-                console.groq.com/docs/rate-limits
-              </a>
-              .
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="groq-api-key">API key ({groqTitle})</Label>
-            <Input
-              className="mt-2"
-              id="groq-api-key"
-              type="password"
-              autoComplete="off"
-              placeholder="gsk_…"
-              value={groqApiKey}
-              onChange={(e) => onGroqApiKeyChange(e.target.value)}
-            />
-            <p className="text-xs text-zinc-500">
-              Saved in this browser only. Get a key at{" "}
-              <a
-                className="text-blue-400 underline"
-                href="https://console.groq.com/keys"
-                target="_blank"
-                rel="noreferrer"
-              >
-                console.groq.com/keys
-              </a>
-              . Leave empty to use the server key. DeepLM still enforces this
-              model&apos;s Free RPM/RPD for every user.
-            </p>
-          </div>
+      {showGroqKey && (
+        <div className="space-y-2 rounded-lg border border-zinc-700 bg-zinc-900 p-4">
+          <Label htmlFor="groq-api-key">Groq API key ({groqTitle})</Label>
+          <Input
+            className="mt-2"
+            id="groq-api-key"
+            type="password"
+            autoComplete="off"
+            placeholder="gsk_…"
+            value={groqApiKey}
+            onChange={(e) => onGroqApiKeyChange(e.target.value)}
+          />
+          <p className="text-xs text-zinc-500">
+            Saved in this browser only. Shared by all Groq models above. Get a
+            key at{" "}
+            <a
+              className="text-blue-400 underline"
+              href="https://console.groq.com/keys"
+              target="_blank"
+              rel="noreferrer"
+            >
+              console.groq.com/keys
+            </a>
+            . Leave empty to use the server key. Free RPM/RPD for{" "}
+            {selectedGroq.label}: {selectedGroq.rpm}/{selectedGroq.rpd} (
+            <a
+              className="text-blue-400 underline"
+              href="https://console.groq.com/docs/rate-limits"
+              target="_blank"
+              rel="noreferrer"
+            >
+              docs
+            </a>
+            ).
+          </p>
         </div>
       )}
     </div>
