@@ -21,13 +21,14 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
-  fetchLanguages,
   postTenseExplain,
   postTenses,
   readStoredTenseLanguage,
   writeStoredTenseLanguage,
   DEFAULT_TENSE_COUNTS,
   MAX_INPUT_CHARS,
+  providerModelLabel,
+  type LanguagesPayload,
   type ProviderId,
   type TenseItem,
   type TenseLanguage,
@@ -49,10 +50,18 @@ export function TensesGenerator({
   provider,
   groqApiKey,
   hfApiKey,
+  hfModel,
+  deepseekModel,
+  groqModel,
+  languages: languagesMeta,
 }: {
   provider: ProviderId;
   groqApiKey: string;
   hfApiKey: string;
+  hfModel?: string;
+  deepseekModel?: string;
+  groqModel?: string;
+  languages: LanguagesPayload | null;
 }) {
   const [languages, setLanguages] = useState<string[]>(["English", "German"]);
   const [tenseCounts, setTenseCounts] = useState<Record<string, number>>(
@@ -74,17 +83,17 @@ export function TensesGenerator({
   useEffect(() => {
     setHistory(readTensesHistory());
     setLanguage(readStoredTenseLanguage());
-    fetchLanguages()
-      .then((data) => {
-        if (data.tense_languages?.length) {
-          setLanguages(data.tense_languages);
-        }
-        if (data.tense_counts) {
-          setTenseCounts({ ...DEFAULT_TENSE_COUNTS, ...data.tense_counts });
-        }
-      })
-      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!languagesMeta) return;
+    if (languagesMeta.tense_languages?.length) {
+      setLanguages(languagesMeta.tense_languages);
+    }
+    if (languagesMeta.tense_counts) {
+      setTenseCounts({ ...DEFAULT_TENSE_COUNTS, ...languagesMeta.tense_counts });
+    }
+  }, [languagesMeta]);
 
   function onLanguageChange(next: string) {
     const lang = next === "German" ? "German" : "English";
@@ -112,7 +121,8 @@ export function TensesGenerator({
         provider,
         groqApiKey,
         language,
-        hfApiKey
+        hfApiKey,
+        provider === "groq" ? groqModel : undefined
       );
       const itemsOut = data.items || [];
       setItems(itemsOut);
@@ -147,7 +157,8 @@ export function TensesGenerator({
         language,
         hfApiKey,
         text.trim(),
-        item.text
+        item.text,
+        provider === "groq" ? groqModel : undefined
       );
       setInfoBody((data.explanation || "").trim());
       setInfoExamples(data.examples || []);
@@ -161,6 +172,7 @@ export function TensesGenerator({
 
   const placeholder = language === "German" ? "Ich arbeite" : "I did";
   const tenseCount = tenseCounts[language] ?? DEFAULT_TENSE_COUNTS[language];
+  const modelNames = { hf: hfModel, deepseek: deepseekModel, groq: groqModel };
   function labelFor(lang: string) {
     const n = tenseCounts[lang] ?? (lang === "German" ? 6 : 12);
     return `${lang} (${n} ${n === 1 ? "tense" : "tenses"})`;
@@ -211,7 +223,9 @@ export function TensesGenerator({
           at: item.at,
           title: item.text,
           subtitle: `${item.language}${
-            item.provider ? ` · ${item.provider}` : ""
+            item.provider
+              ? ` · ${providerModelLabel(item.provider, modelNames)}`
+              : ""
           } · ${formatHistoryTime(item.at)}`,
         }))}
         onSelect={(id) => {
@@ -232,7 +246,8 @@ export function TensesGenerator({
       />
       {usedProvider && (
         <Badge>
-          via {usedProvider} · {language} · {tenseCount} tenses
+          via {providerModelLabel(usedProvider, modelNames)} · {language} ·{" "}
+          {tenseCount} tenses
         </Badge>
       )}
       {!loading && usedProvider && items.length === 0 && (

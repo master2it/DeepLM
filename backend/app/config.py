@@ -1,4 +1,4 @@
-"""Runtime settings. HF_TOKEN is optional (Ollama is primary)."""
+"""Runtime settings from environment / .env."""
 
 from __future__ import annotations
 
@@ -37,12 +37,10 @@ class Settings(BaseSettings):
         populate_by_name=True,
     )
 
-    ollama_enabled: bool = False
-    ollama_base_url: str = "http://127.0.0.1:11434"
-    ollama_model: str = "deepseek-r1"
-    ollama_timeout_seconds: float = 120.0
+    request_timeout_seconds: float = 120.0
     hf_token: str = ""
     hf_chat_model: str = "Qwen/Qwen2.5-72B-Instruct"
+    hf_deepseek_model: str = "deepseek-ai/DeepSeek-V4-Flash"
     hf_provider: str = "auto"
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-120b"
@@ -83,7 +81,8 @@ class Settings(BaseSettings):
     )
     redis_ttl_seconds: int = 43200
     hf_default_daily_limit: int = 50
-    groq_default_daily_limit: int = 30  # Groq cap; applied per UTC hour.
+    # Fallback only; live Groq caps come from Free-plan catalog (RPD per model).
+    groq_default_daily_limit: int = 1000
 
     @property
     def cors_origin_list(self) -> list[str]:

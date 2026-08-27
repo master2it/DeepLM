@@ -10,6 +10,9 @@ const withSerwist = withSerwistInit({
 
 const nextConfig: NextConfig = {
   ...(process.env.OUTPUT_STANDALONE === "1" ? { output: "standalone" as const } : {}),
+  // Serwist adds a webpack plugin; Next 16 Turbopack needs an explicit turbopack key
+  // (or --webpack) when any webpack config is present.
+  turbopack: {},
 };
 
 export default withSerwist(nextConfig);

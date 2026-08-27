@@ -11,7 +11,7 @@ declare global {
 
 declare const self: ServiceWorkerGlobalScope & typeof globalThis;
 
-const apiHost = (process.env.NEXT_PUBLIC_API_URL || "https://deeplm.up.railway.app")
+const apiHost = (process.env.NEXT_PUBLIC_API_URL || "")
   .replace(/^https?:\/\//, "")
   .replace(/\/.*$/, "");
 
@@ -23,9 +23,8 @@ const serwist = new Serwist({
   runtimeCaching: [
     {
       matcher: ({ url }) =>
-        url.hostname === apiHost ||
-        url.hostname === "deeplm.up.railway.app" ||
-        url.hostname.endsWith(".up.railway.app"),
+        Boolean(apiHost) &&
+        (url.hostname === apiHost || url.hostname.endsWith(".up.railway.app")),
       handler: new NetworkOnly(),
     },
     ...defaultCache,

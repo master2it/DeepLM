@@ -15,13 +15,13 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
-  fetchLanguages,
   postGrammar,
   type GrammarResult,
   type LanguagesPayload,
   type ProviderId,
   type StylePair,
   MAX_INPUT_CHARS,
+  providerModelLabel,
 } from "@/lib/api";
 import {
   formatHistoryTime,
@@ -78,12 +78,20 @@ export function GrammarFixer({
   provider,
   groqApiKey,
   hfApiKey,
+  hfModel,
+  deepseekModel,
+  groqModel,
+  languages,
 }: {
   provider: ProviderId;
   groqApiKey: string;
   hfApiKey: string;
+  hfModel?: string;
+  deepseekModel?: string;
+  groqModel?: string;
+  languages: LanguagesPayload | null;
 }) {
-  const [meta, setMeta] = useState<LanguagesPayload | null>(null);
+  const meta = languages;
   const [text, setText] = useState("");
   const [fromLang, setFromLang] = useState("English");
   const [toLang, setToLang] = useState("Persian");
@@ -95,19 +103,18 @@ export function GrammarFixer({
 
   useEffect(() => {
     setHistory(readGrammarHistory());
-    fetchLanguages()
-      .then((data) => {
-        setMeta(data);
-        setFromLang(data.default_from);
-        setToLang(data.default_to);
-        setToLocale(
-          data.default_locales?.[data.default_to] ||
-            data.locales?.[data.default_to]?.[0] ||
-            data.default_to
-        );
-      })
-      .catch((e) => setError(e.message));
   }, []);
+
+  useEffect(() => {
+    if (!languages) return;
+    setFromLang(languages.default_from);
+    setToLang(languages.default_to);
+    setToLocale(
+      languages.default_locales?.[languages.default_to] ||
+        languages.locales?.[languages.default_to]?.[0] ||
+        languages.default_to
+    );
+  }, [languages]);
 
   const rtl = new Set(meta?.rtl ?? ["Persian", "Arabic"]);
   const localeOptions = localesFor(meta, toLang);
@@ -138,6 +145,7 @@ export function GrammarFixer({
         provider,
         groq_api_key: groqApiKey,
         hf_api_key: hfApiKey,
+        groq_model: provider === "groq" ? groqModel : undefined,
       });
       setResult(data);
       setHistory(
@@ -157,6 +165,8 @@ export function GrammarFixer({
       setLoading(false);
     }
   }
+
+  const modelNames = { hf: hfModel, deepseek: deepseekModel, groq: groqModel };
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -254,7 +264,11 @@ export function GrammarFixer({
           title: item.text,
           subtitle: `${item.from_lang} → ${item.to_lang}${
             item.to_locale ? ` (${item.to_locale})` : ""
-          }${item.provider ? ` · ${item.provider}` : ""} · ${formatHistoryTime(item.at)}`,
+          }${
+            item.provider
+              ? ` · ${providerModelLabel(item.provider, modelNames)}`
+              : ""
+          } · ${formatHistoryTime(item.at)}`,
         }))}
         onSelect={(id) => {
           const item = history.find((row) => row.id === id);
@@ -275,7 +289,11 @@ export function GrammarFixer({
       />
       {result && (
         <div className="space-y-4">
-          {result.provider && <Badge>via {result.provider}</Badge>}
+          {result.provider && (
+            <Badge>
+              via {providerModelLabel(result.provider, modelNames)}
+            </Badge>
+          )}
           {STYLE_KEYS.map(({ key, label }) => {
             const pair = stylePair(result, key);
             const enhanced = pair.grammarEnhanced || pair.from || "";

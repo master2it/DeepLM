@@ -28,30 +28,90 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+---
+
+## [1.6.0] — 2026-08-27 — minor
+
+### 2026-08-27 — Release 1.6.0
+- **Type:** release
+- **Version:** 1.6.0
+- **Summary:** Ship Unreleased work: remove Ollama, DeepSeek-V4-Flash via HF, Groq Free model picker with RPM/RPD limits, env-only API URL, and related UI/fixes.
+- **Why:** release
+- **Files:** `VERSION`, `backend/app/version.py`, `frontend/src/lib/version.ts`, `package.json`, `frontend/package.json`, `CHANGELOG.md`, `README.md`
+
+### 2026-08-27 — Groq Free models + RPM/RPD limits
+- **Type:** minor
+- **Version:** 1.6.0
+- **Summary:** Settings lists Groq Free chat models (gpt-oss, Qwen3, compound). Per-model Free RPM/RPD from Groq docs replace the old 30/hour cap. Whisper/Orpheus/Prompt Guard omitted (not chat). Cache schema 21.
+- **Why:** feature
+- **Files:** `backend/app/groq_models.py`, `quota.py`, `llm.py`, `main.py`, `cache.py`, frontend Settings/Limits/api, tests, docs
+
+### 2026-08-27 — Add DeepSeek-V4-Flash via Hugging Face
+- **Type:** minor
+- **Version:** 1.6.0
+- **Summary:** New Settings provider `deepseek` runs `deepseek-ai/DeepSeek-V4-Flash` through HF Inference Providers (same HF token / 50-day quota). Cache schema 20.
+- **Why:** feature
+- **Files:** `backend/app/llm.py`, `config.py`, `main.py`, `quota.py`, `cache.py`, frontend Settings/page/api/components, `.env.example`, `docker-compose.yml`
+
+### 2026-08-27 — Avoid duplicate frontend API GETs
+- **Type:** patch
+- **Version:** 1.6.0
+- **Summary:** Deduplicate health/languages/changelog/limits GETs; load languages once on the home page and pass into Grammar/Tenses tabs.
+- **Why:** bug
+- **Files:** `frontend/src/lib/api.ts`, `frontend/src/app/page.tsx`, `grammar-fixer.tsx`, `tenses-generator.tsx`
+
+### 2026-08-27 — Frontend API URL from env only
+- **Type:** patch
+- **Version:** 1.6.0
+- **Summary:** `API_BASE` and the service worker use `NEXT_PUBLIC_API_URL` only (no hardcoded Railway/localhost fallbacks). Added `frontend/.env.development`, `.env.production`, and `.env.example`.
+- **Why:** deploy
+- **Files:** `frontend/src/lib/api.ts`, `frontend/src/app/sw.ts`, `frontend/.env.*`
+
+### 2026-08-27 — Remove Ollama provider
+- **Type:** major
+- **Version:** 1.6.0
+- **Summary:** Drop Ollama from API, Settings, health, cache keys, Docker, and docs. Only Hugging Face and Groq remain. Saved `ollama` selections migrate to Hugging Face.
+- **Why:** feature
+- **Files:** `backend/app/llm.py`, `config.py`, `main.py`, `cache.py`, `frontend/src/lib/api.ts`, `settings-panel.tsx`, `page.tsx`, grammar/tenses components, tests, `.env.example`, `docker-compose.yml`, `README.md`, package keywords
+
+### 2026-08-27 — Fix Next.js 16 Turbopack / webpack conflict
+- **Type:** patch
+- **Version:** 1.6.0
+- **Summary:** Add empty `turbopack: {}` and pass `--turbopack` on `next dev` so Serwist's webpack plugin no longer crashes Next 16. Production build stays on `--webpack`.
+- **Why:** bug
+- **Files:** `frontend/next.config.ts`, `frontend/package.json`
+
+### 2026-08-27 — Show model names instead of Groq / Hugging Face
+- **Type:** patch
+- **Version:** 1.6.0
+- **Summary:** Settings, header badges, Limits, and result/history labels show model names (e.g. Qwen2.5-72B-Instruct, gpt-oss-120b) instead of Groq / Hugging Face brand names.
+- **Why:** feature
+- **Files:** `frontend/src/lib/api.ts`, `frontend/src/components/settings-panel.tsx`, `frontend/src/components/limits-panel.tsx`, `frontend/src/components/grammar-fixer.tsx`, `frontend/src/components/tenses-generator.tsx`, `frontend/src/app/page.tsx`
+
 ### 2026-08-18 — HF provider auto-select for Qwen 72B
 - **Type:** patch
-- **Version:** Unreleased
+- **Version:** 1.6.0
 - **Summary:** Hugging Face chat defaults to `HF_PROVIDER=auto` instead of Together. Provider-not-supported errors fall through to other hosts.
 - **Why:** bug
 - **Files:** `backend/app/llm.py`, `backend/app/config.py`, `.env.example`, `railway.toml`, `docker-compose.yml`, `README.md`
 
 ### 2026-08-18 — Groq 30/hour instead of 30/day
 - **Type:** patch
-- **Version:** Unreleased
+- **Version:** 1.6.0
 - **Summary:** Groq's 30-generation cap (pasted key or server key) now resets every UTC hour. Hugging Face stays 50/day on the shared token.
 - **Why:** feature
 - **Files:** `backend/app/quota.py`, `backend/app/config.py`, `backend/tests/test_quota.py`, `frontend/src/components/limits-panel.tsx`, `frontend/src/components/settings-panel.tsx`, `frontend/src/lib/api.ts`, `.env.example`, `README.md`
 
 ### 2026-08-18 — Two-column tense cards with three click examples
 - **Type:** patch
-- **Version:** Unreleased
+- **Version:** 1.6.0
 - **Summary:** Tense results show two cards per row. Clicking a card explains that tense and lists three example sentences matching the user's phrase. Cache schema 18.
 - **Why:** feature
 - **Files:** `frontend/src/components/tenses-generator.tsx`, `frontend/src/lib/api.ts`, `backend/app/tenses.py`, `backend/app/main.py`, `backend/app/cache.py`, `backend/tests/test_tenses.py`, `backend/tests/test_cache.py`
 
 ### 2026-08-18 — Collocation intensity + tone-preserving translation
 - **Type:** patch
-- **Version:** Unreleased
+- **Version:** 1.6.0
 - **Summary:** Caps Native/Friendly/Professional at 0-2 natural chunks; Friendly cannot be more formal than Native. Each translation matches that version's tone instead of calquing English. Cache schema 17.
 - **Why:** bug
 - **Files:** `backend/app/constants.py`, `backend/app/grammar.py`, `backend/app/cache.py`, `backend/tests/test_translation_quality.py`

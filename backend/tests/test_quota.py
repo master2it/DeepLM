@@ -12,12 +12,14 @@ if str(ROOT) not in sys.path:
 
 from unittest.mock import MagicMock, patch
 
+from app.groq_models import GROQ_FREE_MODELS, resolve_groq_model  # noqa: E402
 from app.quota import (  # noqa: E402
     _quota_keys,
     consume,
     default_quota_kind,
     utc_hour_ttl,
     utc_midnight_ttl,
+    utc_minute_ttl,
     uses_default_groq,
     uses_default_hf,
 )
@@ -37,14 +39,34 @@ class DefaultKeyQuotaTests(unittest.TestCase):
         self.assertFalse(uses_default_groq("groq", "gsk_abc"))
         self.assertFalse(uses_default_hf("groq", None))
         self.assertFalse(uses_default_groq("huggingface", None))
-        self.assertFalse(uses_default_hf("ollama", None))
+
+        self.assertTrue(uses_default_hf("deepseek", None))
+        self.assertFalse(uses_default_hf("deepseek", "hf_abc"))
 
     def test_quota_kind(self):
         self.assertEqual(default_quota_kind("huggingface", None, None), "hf")
+        self.assertEqual(default_quota_kind("deepseek", None, None), "hf")
         self.assertEqual(default_quota_kind("groq", None, None), "groq")
         self.assertIsNone(default_quota_kind("huggingface", "hf_x", None))
         self.assertEqual(default_quota_kind("groq", None, "gsk_x"), "groq")
-        self.assertIsNone(default_quota_kind("ollama", None, None))
+        self.assertIsNone(default_quota_kind("unknown", None, None))
+
+
+class GroqCatalogTests(unittest.TestCase):
+    def test_free_chat_models_present(self):
+        ids = {m.id for m in GROQ_FREE_MODELS}
+        self.assertIn("openai/gpt-oss-120b", ids)
+        self.assertIn("openai/gpt-oss-20b", ids)
+        self.assertIn("qwen/qwen3.6-27b", ids)
+        self.assertIn("qwen/qwen3.8-27b", ids)
+        self.assertIn("groq/compound", ids)
+        self.assertNotIn("whisper-large-v3", ids)
+
+    def test_gpt_oss_free_limits(self):
+        model = resolve_groq_model("openai/gpt-oss-120b")
+        self.assertEqual(model.rpm, 30)
+        self.assertEqual(model.rpd, 1000)
+        self.assertEqual(model.tpm, 8000)
 
 
 class QuotaWindowTests(unittest.TestCase):
@@ -56,21 +78,28 @@ class QuotaWindowTests(unittest.TestCase):
         self.assertEqual(resets.minute, 0)
         self.assertEqual(resets.second, 0)
 
-    def test_groq_keys_use_hour_hf_keys_use_day(self):
+    def test_minute_bucket(self):
+        bucket, ttl, resets = utc_minute_ttl()
+        self.assertRegex(bucket, r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$")
+        self.assertGreaterEqual(ttl, 60)
+        self.assertEqual(resets.second, 0)
+
+    def test_groq_day_keys_include_model_hf_day_keys(self):
         request = MagicMock()
         request.headers.get.side_effect = lambda name, default="": {
             "x-forwarded-for": "203.0.113.9",
             "X-Client-Id": "browser-1",
         }.get(name, default)
-        groq_ip, groq_cid, groq_ttl = _quota_keys(request, "groq")
+        groq_ip, groq_cid, groq_ttl = _quota_keys(
+            request, "groq", groq_model="openai/gpt-oss-120b"
+        )
         hf_ip, _hf_cid, _hf_ttl = _quota_keys(request, "hf")
-        hour, _, _ = utc_hour_ttl()
         day, _, _ = utc_midnight_ttl()
-        self.assertIn(f":{hour}:", groq_ip)
-        self.assertIn(f":{hour}:", groq_cid)
+        self.assertIn(":day:", groq_ip)
+        self.assertIn(f":{day}:", groq_ip)
+        self.assertIn("openai_gpt-oss-120b", groq_ip)
         self.assertIn(f":{day}:", hf_ip)
-        self.assertNotIn("T", hf_ip.split("hfquota:")[1].split(":ip:")[0])
-        self.assertLessEqual(groq_ttl, 3600)
+        self.assertGreater(groq_ttl, 60)
 
 
 class FakeRedis:
@@ -105,10 +134,11 @@ class ConsumeQuotaTests(unittest.TestCase):
         }.get(name, default)
 
         with patch("app.quota.get_redis", return_value=fake):
-            consume(request, "groq")
-            consume(request, "groq")
+            consume(request, "groq", groq_model="openai/gpt-oss-120b")
+            consume(request, "groq", groq_model="openai/gpt-oss-120b")
 
-        self.assertEqual(len(fake.store), 2)
+        # day ip/cid + minute ip/cid
+        self.assertEqual(len(fake.store), 4)
         self.assertTrue(all(count == 2 for count in fake.store.values()))
 
 

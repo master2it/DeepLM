@@ -430,6 +430,7 @@ def get_styled_translations_from_ai(
     provider: str | None = None,
     groq_api_key: str | None = None,
     hf_api_key: str | None = None,
+    groq_model: str | None = None,
 ) -> dict:
     src_hint = from_lang if from_lang in TARGET_LANGUAGES else DEFAULT_GRAMMAR_FROM
     tgt = to_lang if to_lang in TARGET_LANGUAGES else DEFAULT_GRAMMAR_TO
@@ -458,6 +459,7 @@ def get_styled_translations_from_ai(
             provider=provider,
             groq_api_key=groq_api_key,
             hf_api_key=hf_api_key,
+            groq_model=groq_model,
         )
         raw = parse_model_json(content)
         parsed = parse_styled_translation_response(

@@ -1,8 +1,8 @@
 {
   "name": "deeplm",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "private": true,
-  "description": "Grammar correction, translation styles, and tense practice in the browser. FastAPI + Next.js with Ollama, Hugging Face, or Groq.",
+  "description": "Grammar correction, translation styles, and tense practice in the browser. FastAPI + Next.js with Hugging Face or Groq.",
   "homepage": "https://deep-lm.vercel.app",
   "license": "MIT",
   "author": "Master2iT",
@@ -21,7 +21,6 @@
     "tenses",
     "persian",
     "german",
-    "ollama",
     "huggingface",
     "groq",
     "fastapi",

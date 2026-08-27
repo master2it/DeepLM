@@ -522,7 +522,7 @@ class MockedPipelineTests(unittest.TestCase):
         responses = [json.dumps(bad_json), json.dumps(good_json)]
 
         def fake_chat(messages, temperature=0.2, max_tokens=2048, provider=None, groq_api_key=None, hf_api_key=None):
-            return responses.pop(0), "ollama"
+            return responses.pop(0), "huggingface"
 
         with patch.object(grammar, "chat", side_effect=fake_chat):
             result = grammar.get_styled_translations_from_ai(
@@ -536,7 +536,7 @@ class MockedPipelineTests(unittest.TestCase):
             grammar.flagged_invented_ready_subject(PERSIAN_READY_PICKUP, result)
         )
         self.assertIn("pick it up", result["friendly"]["to"].lower())
-        self.assertEqual(result["provider"], "ollama")
+        self.assertEqual(result["provider"], "huggingface")
 
     def test_preserves_independent_source_rewrites(self):
         payload = {

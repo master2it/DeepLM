@@ -10,21 +10,28 @@ import httpx
 from huggingface_hub import InferenceClient
 
 from app.config import get_settings
+from app.groq_models import groq_models_payload, resolve_groq_model
 
 logger = logging.getLogger(__name__)
 
 THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+# DeepSeek non-think mode may leave a lone closing tag.
+THINK_CLOSE_RE = re.compile(r"</think>", re.IGNORECASE)
 
-ProviderName = Literal["ollama", "huggingface", "groq"]
-PROVIDERS: tuple[ProviderName, ...] = ("ollama", "huggingface", "groq")
-_ALIASES = {"hf": "huggingface", "hugging_face": "huggingface"}
+ProviderName = Literal["huggingface", "deepseek", "groq"]
+PROVIDERS: tuple[ProviderName, ...] = ("huggingface", "deepseek", "groq")
+_ALIASES = {
+    "hf": "huggingface",
+    "hugging_face": "huggingface",
+    "deepseek-v4-flash": "deepseek",
+    "deepseek_flash": "deepseek",
+    "hf-deepseek": "deepseek",
+}
+_HF_FAMILY = frozenset({"huggingface", "deepseek"})
 
 
 def default_order() -> list[ProviderName]:
-    order: list[ProviderName] = ["huggingface", "groq"]
-    if get_settings().ollama_enabled:
-        order.insert(1, "ollama")
-    return order
+    return ["huggingface", "deepseek", "groq"]
 
 
 class LLMError(RuntimeError):
@@ -35,6 +42,7 @@ def strip_thinking(text: str) -> str:
     if not text:
         return ""
     cleaned = THINK_BLOCK_RE.sub("", text)
+    cleaned = THINK_CLOSE_RE.sub("", cleaned)
     return cleaned.strip()
 
 
@@ -43,9 +51,13 @@ def normalize_provider(provider: str | None) -> ProviderName:
         return "huggingface"
     name = str(provider).strip().lower()
     name = _ALIASES.get(name, name)
+    if name == "ollama":
+        raise LLMError(
+            "Ollama is no longer supported. Use huggingface, deepseek, or groq."
+        )
     if name not in PROVIDERS:
         raise LLMError(
-            f"Unknown provider '{provider}'. Use ollama, huggingface, or groq."
+            f"Unknown provider '{provider}'. Use huggingface, deepseek, or groq."
         )
     return name  # type: ignore[return-value]
 
@@ -70,13 +82,24 @@ def _hf_chat_content(response: Any) -> str:
         content = getattr(message, "content", None)
         if content:
             return strip_thinking(content)
+        # Some hosts put reasoning in a separate field.
+        reasoning = getattr(message, "reasoning_content", None) or getattr(
+            message, "reasoning", None
+        )
+        if reasoning and not content:
+            return strip_thinking(str(reasoning))
     except Exception:
         pass
     if isinstance(response, dict):
         choices = response.get("choices") or []
         if choices:
             msg = choices[0].get("message") or {}
-            return strip_thinking(msg.get("content") or "")
+            content = msg.get("content") or ""
+            if content:
+                return strip_thinking(content)
+            reasoning = msg.get("reasoning_content") or msg.get("reasoning") or ""
+            if reasoning:
+                return strip_thinking(str(reasoning))
     return strip_thinking(str(response))
 
 
@@ -86,9 +109,7 @@ def _skip_reason(
     groq_api_key: str | None = None,
     hf_api_key: str | None = None,
 ) -> str | None:
-    if name == "ollama" and not get_settings().ollama_enabled:
-        return "Ollama is temporarily disabled"
-    if name == "huggingface" and not _resolve_hf_key(hf_api_key):
+    if name in _HF_FAMILY and not _resolve_hf_key(hf_api_key):
         return "HF_TOKEN is not configured"
     if name == "groq" and not _resolve_groq_key(groq_api_key):
         return "GROQ_API_KEY is not configured"
@@ -107,36 +128,6 @@ def _resolve_hf_key(hf_api_key: str | None) -> str:
     if override:
         return override
     return get_settings().hf_token.strip()
-
-
-def _ollama_chat(
-    messages: list[dict[str, str]],
-    *,
-    temperature: float,
-    max_tokens: int,
-) -> str:
-    settings = get_settings()
-    url = settings.ollama_base_url.rstrip("/") + "/api/chat"
-    payload = {
-        "model": settings.ollama_model,
-        "messages": messages,
-        "stream": False,
-        "think": False,
-        "options": {
-            "temperature": temperature,
-            "num_predict": max_tokens,
-        },
-    }
-    with httpx.Client(timeout=settings.ollama_timeout_seconds) as client:
-        response = client.post(url, json=payload)
-        response.raise_for_status()
-        data = response.json()
-    message = data.get("message") or {}
-    content = message.get("content") or data.get("response") or ""
-    content = strip_thinking(content)
-    if not content.strip():
-        raise LLMError("Ollama returned empty content.")
-    return content
 
 
 def _clean_hf_model(value: str) -> str:
@@ -159,9 +150,9 @@ def _hf_provider_candidates(explicit: str | None) -> list[str]:
         (explicit or "").strip().lower(),
         (get_settings().hf_provider or "").strip().lower(),
         "auto",
+        "novita",
         "fireworks-ai",
         "nebius",
-        "novita",
         "deepinfra",
         "together",
         "sambanova",
@@ -182,18 +173,19 @@ def _make_hf_client(token: str, provider: str):
             return InferenceClient(token=token)
 
 
-def _huggingface_chat(
+def _hf_chat(
     messages: list[dict[str, str]],
     *,
     temperature: float,
     max_tokens: int,
+    model_setting: str,
+    label: str,
     hf_api_key: str | None = None,
 ) -> str:
-    settings = get_settings()
     token = _resolve_hf_key(hf_api_key)
     if not token:
         raise LLMError("HF_TOKEN is not configured.")
-    model, model_provider = _split_hf_model(settings.hf_chat_model)
+    model, model_provider = _split_hf_model(model_setting)
     last_error: Exception | None = None
     for provider in _hf_provider_candidates(model_provider):
         try:
@@ -206,9 +198,11 @@ def _huggingface_chat(
             )
             content = _hf_chat_content(response)
             if not content.strip():
-                raise LLMError("Hugging Face returned empty content.")
+                raise LLMError(f"{label} returned empty content.")
             if provider != "auto":
-                logger.info("Hugging Face chat via provider=%s model=%s", provider, model)
+                logger.info(
+                    "%s chat via provider=%s model=%s", label, provider, model
+                )
             return content
         except LLMError:
             raise
@@ -231,7 +225,43 @@ def _huggingface_chat(
         " Enable a host for this model at https://huggingface.co/settings/inference-providers "
         "or set HF_PROVIDER=auto so the router can pick a supported host."
     )
-    raise LLMError(str(last_error) + hint if last_error else "Hugging Face chat failed." + hint)
+    raise LLMError(
+        str(last_error) + hint if last_error else f"{label} chat failed." + hint
+    )
+
+
+def _huggingface_chat(
+    messages: list[dict[str, str]],
+    *,
+    temperature: float,
+    max_tokens: int,
+    hf_api_key: str | None = None,
+) -> str:
+    return _hf_chat(
+        messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        model_setting=get_settings().hf_chat_model,
+        label="Hugging Face",
+        hf_api_key=hf_api_key,
+    )
+
+
+def _deepseek_chat(
+    messages: list[dict[str, str]],
+    *,
+    temperature: float,
+    max_tokens: int,
+    hf_api_key: str | None = None,
+) -> str:
+    return _hf_chat(
+        messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        model_setting=get_settings().hf_deepseek_model,
+        label="DeepSeek",
+        hf_api_key=hf_api_key,
+    )
 
 
 def _groq_chat(
@@ -240,13 +270,18 @@ def _groq_chat(
     temperature: float,
     max_tokens: int,
     groq_api_key: str | None = None,
+    groq_model: str | None = None,
 ) -> str:
     settings = get_settings()
     key = _resolve_groq_key(groq_api_key)
     if not key:
         raise LLMError("GROQ_API_KEY is not configured.")
+    model = resolve_groq_model(groq_model, settings.groq_model)
     url = settings.groq_base_url.rstrip("/") + "/chat/completions"
     cap = max(256, int(getattr(settings, "groq_max_tokens", 4096) or 4096))
+    if model.tpm:
+        # Keep a single request under Free-plan TPM headroom.
+        cap = min(cap, max(256, int(model.tpm) // 2))
     tokens = min(max(1, int(max_tokens)), cap)
     headers = {
         "Authorization": f"Bearer {key}",
@@ -257,14 +292,15 @@ def _groq_chat(
         if size not in attempts:
             attempts.append(size)
     last_response: httpx.Response | None = None
+    timeout = float(getattr(settings, "request_timeout_seconds", 120.0) or 120.0)
     for attempt in attempts:
         payload = {
-            "model": settings.groq_model,
+            "model": model.id,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": attempt,
         }
-        with httpx.Client(timeout=settings.ollama_timeout_seconds) as client:
+        with httpx.Client(timeout=timeout) as client:
             last_response = client.post(url, json=payload, headers=headers)
         if last_response.status_code == 413 and attempt != attempts[-1]:
             logger.warning(
@@ -291,13 +327,14 @@ def chat(
     provider: str | None = None,
     groq_api_key: str | None = None,
     hf_api_key: str | None = None,
+    groq_model: str | None = None,
 ) -> tuple[str, str]:
     """Return (content, provider). Explicit Settings choice is exclusive."""
     exclusive = bool(provider and str(provider).strip())
     preferred = normalize_provider(provider)
     handlers = {
-        "ollama": _ollama_chat,
         "huggingface": _huggingface_chat,
+        "deepseek": _deepseek_chat,
         "groq": _groq_chat,
     }
     errors: list[str] = []
@@ -315,7 +352,8 @@ def chat(
             }
             if name == "groq":
                 kwargs["groq_api_key"] = groq_api_key
-            if name == "huggingface":
+                kwargs["groq_model"] = groq_model
+            if name in _HF_FAMILY:
                 kwargs["hf_api_key"] = hf_api_key
             content = handlers[name](messages, **kwargs)
             return content, name
@@ -327,27 +365,10 @@ def chat(
     raise LLMError(prefix + "; ".join(errors))
 
 
-def ollama_reachable() -> bool:
-    settings = get_settings()
-    url = settings.ollama_base_url.rstrip("/") + "/api/tags"
-    try:
-        with httpx.Client(timeout=3.0) as client:
-            response = client.get(url)
-            return response.status_code < 500
-    except Exception:
-        return False
-
-
 def providers_status() -> list[dict[str, Any]]:
     settings = get_settings()
+    default_groq = resolve_groq_model(settings.groq_model)
     return [
-        {
-            "id": "ollama",
-            "label": "Ollama",
-            "available": settings.ollama_enabled and ollama_reachable(),
-            "enabled": settings.ollama_enabled,
-            "model": settings.ollama_model,
-        },
         {
             "id": "huggingface",
             "label": "Hugging Face",
@@ -355,9 +376,16 @@ def providers_status() -> list[dict[str, Any]]:
             "model": settings.hf_chat_model,
         },
         {
+            "id": "deepseek",
+            "label": "DeepSeek",
+            "available": settings.hf_configured,
+            "model": settings.hf_deepseek_model,
+        },
+        {
             "id": "groq",
             "label": "Groq",
             "available": settings.groq_configured,
-            "model": settings.groq_model,
+            "model": default_groq.id,
+            "models": groq_models_payload(),
         },
     ]

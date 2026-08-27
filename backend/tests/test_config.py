@@ -67,14 +67,16 @@ class RouteTests(unittest.TestCase):
     def test_selected_first_then_default_order(self):
         self.assertEqual(
             provider_route("huggingface"),
-            ["huggingface", "groq"],
+            ["huggingface", "deepseek", "groq"],
         )
         self.assertEqual(
             provider_route("groq"),
-            ["groq", "huggingface"],
+            ["groq", "huggingface", "deepseek"],
         )
         self.assertEqual(provider_route("groq", exclusive=True), ["groq"])
-
+        self.assertEqual(
+            provider_route("deepseek", exclusive=True), ["deepseek"]
+        )
 
 class HfProviderCandidateTests(unittest.TestCase):
     def test_auto_is_first_when_settings_say_auto(self):
@@ -96,19 +98,19 @@ class HfProviderCandidateTests(unittest.TestCase):
 class FallbackTests(unittest.TestCase):
     def test_no_provider_uses_huggingface(self):
         with patch("app.llm._skip_reason", return_value=None):
-            with patch("app.llm._huggingface_chat", return_value="hello from hf") as hf:
-                with patch("app.llm._ollama_chat") as ollama:
+            with patch("app.llm._huggingface_chat", return_value="hello from hf"):
+                with patch("app.llm._deepseek_chat") as deepseek:
                     with patch("app.llm._groq_chat") as groq:
                         content, provider = chat([{"role": "user", "content": "hi"}])
         self.assertEqual(content, "hello from hf")
         self.assertEqual(provider, "huggingface")
-        ollama.assert_not_called()
+        deepseek.assert_not_called()
         groq.assert_not_called()
 
-    def test_selected_hf_skips_ollama_first(self):
+    def test_selected_hf_exclusive(self):
         with patch("app.llm._skip_reason", return_value=None):
             with patch("app.llm._huggingface_chat", return_value="hello from hf") as hf:
-                with patch("app.llm._ollama_chat") as ollama:
+                with patch("app.llm._deepseek_chat") as deepseek:
                     with patch("app.llm._groq_chat") as groq:
                         content, provider = chat(
                             [{"role": "user", "content": "hi"}],
@@ -117,37 +119,55 @@ class FallbackTests(unittest.TestCase):
         self.assertEqual(content, "hello from hf")
         self.assertEqual(provider, "huggingface")
         hf.assert_called_once()
-        ollama.assert_not_called()
+        deepseek.assert_not_called()
+        groq.assert_not_called()
+
+    def test_selected_deepseek_exclusive(self):
+        with patch("app.llm._skip_reason", return_value=None):
+            with patch("app.llm._deepseek_chat", return_value="hello from deepseek") as ds:
+                with patch("app.llm._huggingface_chat") as hf:
+                    with patch("app.llm._groq_chat") as groq:
+                        content, provider = chat(
+                            [{"role": "user", "content": "hi"}],
+                            provider="deepseek",
+                            hf_api_key="hf_test",
+                        )
+        self.assertEqual(content, "hello from deepseek")
+        self.assertEqual(provider, "deepseek")
+        ds.assert_called_once()
+        hf.assert_not_called()
         groq.assert_not_called()
 
     def test_selected_groq_used_first(self):
         with patch("app.llm._skip_reason", return_value=None):
             with patch("app.llm._groq_chat", return_value="hello from groq"):
-                with patch("app.llm._ollama_chat") as ollama:
-                    with patch("app.llm._huggingface_chat") as hf:
+                with patch("app.llm._huggingface_chat") as hf:
+                    with patch("app.llm._deepseek_chat") as deepseek:
                         content, provider = chat(
                             [{"role": "user", "content": "hi"}],
                             provider="groq",
                         )
         self.assertEqual(content, "hello from groq")
         self.assertEqual(provider, "groq")
-        ollama.assert_not_called()
         hf.assert_not_called()
+        deepseek.assert_not_called()
 
-    def test_ollama_fail_uses_huggingface(self):
+    def test_hf_fail_falls_back_to_deepseek_when_no_provider(self):
         with patch("app.llm._skip_reason", return_value=None):
-            with patch("app.llm._ollama_chat", side_effect=ConnectionError("down")):
-                with patch("app.llm._huggingface_chat", return_value="hello from hf"):
+            with patch("app.llm._huggingface_chat", side_effect=ConnectionError("down")):
+                with patch(
+                    "app.llm._deepseek_chat", return_value="hello from deepseek"
+                ):
                     with patch("app.llm._groq_chat") as groq:
                         content, provider = chat([{"role": "user", "content": "hi"}])
-        self.assertEqual(content, "hello from hf")
-        self.assertEqual(provider, "huggingface")
+        self.assertEqual(content, "hello from deepseek")
+        self.assertEqual(provider, "deepseek")
         groq.assert_not_called()
 
     def test_selected_fails_does_not_fallback(self):
         with patch("app.llm._skip_reason", return_value=None):
             with patch("app.llm._huggingface_chat", side_effect=RuntimeError("hf down")):
-                with patch("app.llm._ollama_chat") as ollama:
+                with patch("app.llm._deepseek_chat") as deepseek:
                     with patch("app.llm._groq_chat") as groq:
                         with self.assertRaises(LLMError) as ctx:
                             chat(
@@ -155,7 +175,7 @@ class FallbackTests(unittest.TestCase):
                                 provider="huggingface",
                             )
         self.assertIn("huggingface", str(ctx.exception).lower())
-        ollama.assert_not_called()
+        deepseek.assert_not_called()
         groq.assert_not_called()
 
     def test_selected_groq_does_not_use_huggingface(self):
@@ -166,7 +186,7 @@ class FallbackTests(unittest.TestCase):
             ),
         ):
             with patch("app.llm._huggingface_chat") as hf:
-                with patch("app.llm._ollama_chat") as ollama:
+                with patch("app.llm._deepseek_chat") as deepseek:
                     with patch("app.llm._groq_chat") as groq:
                         with self.assertRaises(LLMError) as ctx:
                             chat(
@@ -176,13 +196,18 @@ class FallbackTests(unittest.TestCase):
         self.assertIn("groq", str(ctx.exception).lower())
         self.assertNotIn("huggingface", str(ctx.exception).lower())
         hf.assert_not_called()
-        ollama.assert_not_called()
+        deepseek.assert_not_called()
         groq.assert_not_called()
+
+    def test_ollama_rejected(self):
+        with self.assertRaises(LLMError) as ctx:
+            chat([{"role": "user", "content": "hi"}], provider="ollama")
+        self.assertIn("ollama", str(ctx.exception).lower())
 
     def test_all_fail_raises(self):
         with patch("app.llm._skip_reason", return_value=None):
-            with patch("app.llm._ollama_chat", side_effect=ConnectionError("down")):
-                with patch("app.llm._huggingface_chat", side_effect=RuntimeError("no token")):
+            with patch("app.llm._huggingface_chat", side_effect=RuntimeError("no token")):
+                with patch("app.llm._deepseek_chat", side_effect=RuntimeError("no ds")):
                     with patch("app.llm._groq_chat", side_effect=RuntimeError("no key")):
                         with self.assertRaises(LLMError):
                             chat([{"role": "user", "content": "hi"}])
@@ -192,8 +217,8 @@ class FallbackTests(unittest.TestCase):
             settings.return_value.hf_configured = False
             settings.return_value.groq_api_key = ""
             with patch("app.llm._groq_chat", return_value="hello from groq") as groq:
-                with patch("app.llm._ollama_chat") as ollama:
-                    with patch("app.llm._huggingface_chat") as hf:
+                with patch("app.llm._huggingface_chat") as hf:
+                    with patch("app.llm._deepseek_chat") as deepseek:
                         content, provider = chat(
                             [{"role": "user", "content": "hi"}],
                             provider="groq",
@@ -205,15 +230,15 @@ class FallbackTests(unittest.TestCase):
         self.assertEqual(
             groq.call_args.kwargs.get("groq_api_key"), "gsk_test_not_a_real_key"
         )
-        ollama.assert_not_called()
         hf.assert_not_called()
+        deepseek.assert_not_called()
 
     def test_request_hf_key_enables_huggingface(self):
         with patch("app.llm.get_settings") as settings:
             settings.return_value.hf_token = ""
             settings.return_value.hf_configured = False
             with patch("app.llm._huggingface_chat", return_value="hello from hf") as hf:
-                with patch("app.llm._ollama_chat") as ollama:
+                with patch("app.llm._deepseek_chat") as deepseek:
                     with patch("app.llm._groq_chat") as groq:
                         content, provider = chat(
                             [{"role": "user", "content": "hi"}],
@@ -226,7 +251,7 @@ class FallbackTests(unittest.TestCase):
         self.assertEqual(
             hf.call_args.kwargs.get("hf_api_key"), "hf_test_not_a_real_key"
         )
-        ollama.assert_not_called()
+        deepseek.assert_not_called()
         groq.assert_not_called()
 
 

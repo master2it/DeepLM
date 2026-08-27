@@ -28,6 +28,7 @@ from app.cache import fold_user_text, get_cached, redis_reachable, save_cached
 from app.changelog import load_changelog
 from app.grammar import get_styled_translations_from_ai
 from app.llm import providers_status
+from app.groq_models import groq_models_payload, resolve_groq_model
 from app.quota import (
     assert_can_generate,
     consume,
@@ -50,7 +51,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-ProviderField = Literal["ollama", "huggingface", "groq"]
+ProviderField = Literal["huggingface", "deepseek", "groq"]
 
 
 class GrammarRequest(BaseModel):
@@ -62,6 +63,7 @@ class GrammarRequest(BaseModel):
     provider: ProviderField | None = None
     groq_api_key: str | None = None
     hf_api_key: str | None = None
+    groq_model: str | None = None
 
 
 class TensesRequest(BaseModel):
@@ -70,6 +72,7 @@ class TensesRequest(BaseModel):
     provider: ProviderField | None = None
     groq_api_key: str | None = None
     hf_api_key: str | None = None
+    groq_model: str | None = None
 
 
 class TenseExplainRequest(BaseModel):
@@ -80,26 +83,27 @@ class TenseExplainRequest(BaseModel):
     provider: ProviderField | None = None
     groq_api_key: str | None = None
     hf_api_key: str | None = None
+    groq_model: str | None = None
 
 
 @app.get("/health")
 def health():
     providers = providers_status()
     by_id = {p["id"]: p for p in providers}
+    default_groq = resolve_groq_model(get_settings().groq_model)
     return {
         "ok": True,
         "version": APP_VERSION,
-        "ollama": by_id["ollama"]["available"],
-        "ollama_enabled": get_settings().ollama_enabled,
         "default_provider": "huggingface",
         "hf_configured": by_id["huggingface"]["available"],
         "groq_configured": by_id["groq"]["available"],
-        "ollama_model": by_id["ollama"]["model"],
         "hf_model": by_id["huggingface"]["model"],
-        "groq_model": by_id["groq"]["model"],
+        "deepseek_model": by_id["deepseek"]["model"],
+        "groq_model": default_groq.id,
+        "groq_models": groq_models_payload(),
         "providers": providers,
         "hf_default_daily_limit": _daily_limit("hf"),
-        "groq_default_daily_limit": _daily_limit("groq"),
+        "groq_default_daily_limit": default_groq.rpd,
         "redis": redis_reachable(),
     }
 
@@ -143,14 +147,24 @@ def _run_generation(
     kind: str | None,
     parts: dict | None,
     producer,
+    groq_model: str | None = None,
 ):
     quota_kind = default_quota_kind(provider, hf_api_key, groq_api_key)
+    resolved_groq = None
+    if quota_kind == "groq" or (provider or "") == "groq":
+        resolved_groq = resolve_groq_model(
+            groq_model, get_settings().groq_model
+        ).id
     if kind and parts is not None:
+        if resolved_groq:
+            parts = {**parts, "groq_model": resolved_groq}
         hit = get_cached(kind, parts)
         if hit is not None:
             return hit
     if quota_kind:
-        assert_can_generate(http_request, quota_kind)
+        assert_can_generate(
+            http_request, quota_kind, groq_model=resolved_groq
+        )
     result = producer()
     if isinstance(result, dict) and result.get("error"):
         raise HTTPException(status_code=502, detail=result["error"])
@@ -159,7 +173,7 @@ def _run_generation(
     if kind and parts is not None and isinstance(result, dict):
         save_cached(kind, parts, result)
     if quota_kind:
-        consume(http_request, quota_kind)
+        consume(http_request, quota_kind, groq_model=resolved_groq)
     return result
 
 
@@ -168,9 +182,15 @@ def api_limits(
     request: Request,
     own_hf_key: bool = False,
     own_groq_key: bool = False,
+    groq_model: str | None = None,
 ):
     return JSONResponse(
-        snapshot(request, own_hf_key=own_hf_key, own_groq_key=own_groq_key),
+        snapshot(
+            request,
+            own_hf_key=own_hf_key,
+            own_groq_key=own_groq_key,
+            groq_model=groq_model,
+        ),
         headers={"Cache-Control": "no-store"},
     )
 
@@ -202,7 +222,9 @@ def grammar(req: GrammarRequest, request: Request):
             provider=req.provider,
             groq_api_key=req.groq_api_key,
             hf_api_key=req.hf_api_key,
+            groq_model=req.groq_model,
         ),
+        groq_model=req.groq_model,
     )
 
 
@@ -226,7 +248,9 @@ def tenses(req: TensesRequest, request: Request):
             provider=req.provider,
             groq_api_key=req.groq_api_key,
             hf_api_key=req.hf_api_key,
+            groq_model=req.groq_model,
         ),
+        groq_model=req.groq_model,
     )
 
 
@@ -255,5 +279,7 @@ def tenses_explain(req: TenseExplainRequest, request: Request):
             provider=req.provider,
             groq_api_key=req.groq_api_key,
             hf_api_key=req.hf_api_key,
+            groq_model=req.groq_model,
         ),
+        groq_model=req.groq_model,
     )

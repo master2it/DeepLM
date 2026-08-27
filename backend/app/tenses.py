@@ -156,6 +156,7 @@ def get_tenses_from_ai(
     provider: str | None = None,
     groq_api_key: str | None = None,
     hf_api_key: str | None = None,
+    groq_model: str | None = None,
 ) -> dict | list:
     lang = normalize_tense_language(language)
     if lang == "German":
@@ -205,6 +206,7 @@ Exactly 12 objects, in the order listed above.
             provider=provider,
             groq_api_key=groq_api_key,
             hf_api_key=hf_api_key,
+            groq_model=groq_model,
         )
         data = parse_model_json(content)
         if isinstance(data, dict) and "error" in data:
@@ -305,6 +307,7 @@ def get_tense_explanation_from_ai(
     hf_api_key: str | None = None,
     source_text: str = "",
     example: str = "",
+    groq_model: str | None = None,
 ) -> dict:
     lang = normalize_tense_language(language)
     system_prompt, user_msg = build_tense_explanation_prompt(
@@ -326,6 +329,7 @@ def get_tense_explanation_from_ai(
             provider=provider,
             groq_api_key=groq_api_key,
             hf_api_key=hf_api_key,
+            groq_model=groq_model,
         )
         data = parse_model_json(content)
         if not isinstance(data, dict):

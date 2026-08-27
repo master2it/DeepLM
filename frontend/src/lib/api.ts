@@ -1,17 +1,56 @@
-const API_BASE = (
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === "production"
-    ? "https://deeplm.up.railway.app"
-    : "http://localhost:8000")
-).replace(/\/$/, "");
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 
-export type ProviderId = "ollama" | "huggingface" | "groq";
+export type ProviderId = "huggingface" | "deepseek" | "groq";
 
 export const PROVIDER_STORAGE_KEY = "deeplm.provider";
 export const GROQ_KEY_STORAGE_KEY = "deeplm.groq_api_key";
+export const GROQ_MODEL_STORAGE_KEY = "deeplm.groq_model";
 export const HF_KEY_STORAGE_KEY = "deeplm.hf_api_key";
 export const CLIENT_ID_STORAGE_KEY = "deeplm.client_id";
 export const TENSE_LANG_STORAGE_KEY = "deeplm.tense_language";
+
+export const DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b";
+
+export type GroqFreeModel = {
+  id: string;
+  label: string;
+  rpm: number;
+  rpd: number;
+  tpm: number | null;
+  tpd: number | null;
+  tag?: string;
+};
+
+/** Short model id for UI (hide org / provider brand). */
+export function shortModelName(model?: string | null, fallback = "Model"): string {
+  const raw = (model || "").trim();
+  if (!raw) return fallback;
+  const base = raw.includes(":") ? raw.split(":")[0] : raw;
+  const parts = base.split("/");
+  return parts[parts.length - 1] || base;
+}
+
+/** User-facing label for a backend provider id — model name, not Groq / Hugging Face. */
+export function providerModelLabel(
+  provider?: string | null,
+  models?: {
+    hf?: string | null;
+    deepseek?: string | null;
+    groq?: string | null;
+  }
+): string {
+  const id = (provider || "").trim().toLowerCase();
+  if (id === "huggingface" || id === "hf") {
+    return shortModelName(models?.hf, "Qwen2.5-72B-Instruct");
+  }
+  if (id === "deepseek") {
+    return shortModelName(models?.deepseek, "DeepSeek-V4-Flash");
+  }
+  if (id === "groq") {
+    return shortModelName(models?.groq, "gpt-oss-120b");
+  }
+  return provider?.trim() || "Model";
+}
 
 export type StylePair = {
   from: string;
@@ -94,18 +133,41 @@ export type ProviderInfo = {
   available: boolean;
   enabled?: boolean;
   model: string;
+  models?: GroqFreeModel[];
+};
+
+export type ProviderLimit = {
+  limit: number;
+  used: number;
+  remaining: number;
+  using_default_key: boolean;
+  period?: "day" | "hour";
+  resets_at?: string;
+  model?: string;
+  rpm_limit?: number;
+  rpm_used?: number;
+  rpm_remaining?: number;
+  rpm_resets_at?: string;
+  tpm?: number | null;
+  tpd?: number | null;
+};
+
+export type LimitsPayload = {
+  resets_at: string;
+  redis: boolean;
+  huggingface: ProviderLimit;
+  groq: ProviderLimit;
 };
 
 export type HealthPayload = {
   ok: boolean;
   version?: string;
-  ollama: boolean;
-  ollama_enabled?: boolean;
   hf_configured: boolean;
   groq_configured: boolean;
-  ollama_model: string;
   hf_model: string;
+  deepseek_model?: string;
   groq_model: string;
+  groq_models?: GroqFreeModel[];
   providers: ProviderInfo[];
   default_provider: ProviderId;
   hf_default_daily_limit?: number;
@@ -136,7 +198,7 @@ export function readStoredProvider(): ProviderId {
     window.localStorage.setItem(PROVIDER_STORAGE_KEY, DEFAULT_PROVIDER);
     return DEFAULT_PROVIDER;
   }
-  if (value === "huggingface" || value === "groq") {
+  if (value === "huggingface" || value === "deepseek" || value === "groq") {
     return value;
   }
   return DEFAULT_PROVIDER;
@@ -157,6 +219,29 @@ export function writeStoredGroqKey(key: string) {
     window.localStorage.setItem(GROQ_KEY_STORAGE_KEY, trimmed);
   } else {
     window.localStorage.removeItem(GROQ_KEY_STORAGE_KEY);
+  }
+}
+
+export function readStoredGroqModel(
+  allowed?: string[] | null
+): string {
+  if (typeof window === "undefined") return DEFAULT_GROQ_MODEL;
+  const value = window.localStorage.getItem(GROQ_MODEL_STORAGE_KEY) || "";
+  if (allowed?.length) {
+    if (value && allowed.includes(value)) return value;
+    return allowed.includes(DEFAULT_GROQ_MODEL)
+      ? DEFAULT_GROQ_MODEL
+      : allowed[0];
+  }
+  return value || DEFAULT_GROQ_MODEL;
+}
+
+export function writeStoredGroqModel(model: string) {
+  const trimmed = model.trim();
+  if (trimmed) {
+    window.localStorage.setItem(GROQ_MODEL_STORAGE_KEY, trimmed);
+  } else {
+    window.localStorage.removeItem(GROQ_MODEL_STORAGE_KEY);
   }
 }
 
@@ -194,36 +279,56 @@ function apiHeaders(json = false): HeadersInit {
   return headers;
 }
 
-export type ProviderLimit = {
-  limit: number;
-  used: number;
-  remaining: number;
-  using_default_key: boolean;
-  period?: "day" | "hour";
-  resets_at?: string;
-};
+/** Share in-flight/session GET promises so Strict Mode remounts and tabs do not double-fetch. */
+const getPromises = new Map<string, Promise<unknown>>();
 
-export type LimitsPayload = {
-  resets_at: string;
-  redis: boolean;
-  huggingface: ProviderLimit;
-  groq: ProviderLimit;
-};
+function sharedGet<T>(
+  key: string,
+  run: () => Promise<T>,
+  ttlMs?: number
+): Promise<T> {
+  const hit = getPromises.get(key);
+  if (hit) return hit as Promise<T>;
+  const promise = run()
+    .catch((err) => {
+      getPromises.delete(key);
+      throw err;
+    })
+    .then((value) => {
+      if (ttlMs != null && ttlMs >= 0) {
+        window.setTimeout(() => getPromises.delete(key), ttlMs);
+      }
+      return value;
+    });
+  getPromises.set(key, promise);
+  return promise as Promise<T>;
+}
 
 export async function fetchLimits(
   ownHfKey: boolean,
-  ownGroqKey: boolean
+  ownGroqKey: boolean,
+  groqModel?: string
 ): Promise<LimitsPayload> {
   const params = new URLSearchParams({
     own_hf_key: ownHfKey ? "true" : "false",
     own_groq_key: ownGroqKey ? "true" : "false",
   });
-  const res = await fetch(`${API_BASE}/api/limits?${params}`, {
-    cache: "no-store",
-    headers: apiHeaders(),
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  if (groqModel?.trim()) {
+    params.set("groq_model", groqModel.trim());
+  }
+  const key = `limits:${params.toString()}`;
+  return sharedGet(
+    key,
+    async () => {
+      const res = await fetch(`${API_BASE}/api/limits?${params}`, {
+        cache: "no-store",
+        headers: apiHeaders(),
+      });
+      if (!res.ok) throw new Error(await parseError(res));
+      return res.json();
+    },
+    1500
+  );
 }
 
 export function readStoredTenseLanguage(): TenseLanguage {
@@ -238,15 +343,19 @@ export function writeStoredTenseLanguage(language: TenseLanguage) {
 }
 
 export async function fetchLanguages(): Promise<LanguagesPayload> {
-  const res = await fetch(`${API_BASE}/api/languages`);
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return sharedGet("languages", async () => {
+    const res = await fetch(`${API_BASE}/api/languages`);
+    if (!res.ok) throw new Error(await parseError(res));
+    return res.json();
+  });
 }
 
 export async function fetchHealth(): Promise<HealthPayload> {
-  const res = await fetch(`${API_BASE}/health`);
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return sharedGet("health", async () => {
+    const res = await fetch(`${API_BASE}/health`);
+    if (!res.ok) throw new Error(await parseError(res));
+    return res.json();
+  });
 }
 
 export type ChangelogChange = {
@@ -269,9 +378,11 @@ export async function fetchChangelog(): Promise<{
   current: string;
   releases: ChangelogRelease[];
 }> {
-  const res = await fetch(`${API_BASE}/api/changelog`);
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return sharedGet("changelog", async () => {
+    const res = await fetch(`${API_BASE}/api/changelog`);
+    if (!res.ok) throw new Error(await parseError(res));
+    return res.json();
+  });
 }
 
 export async function postGrammar(body: {
@@ -282,6 +393,7 @@ export async function postGrammar(body: {
   provider: ProviderId;
   groq_api_key?: string;
   hf_api_key?: string;
+  groq_model?: string;
 }): Promise<GrammarResult> {
   const res = await fetch(`${API_BASE}/api/grammar`, {
     method: "POST",
@@ -291,6 +403,7 @@ export async function postGrammar(body: {
       text: body.text.trim().toLowerCase(),
       groq_api_key: body.groq_api_key?.trim() || undefined,
       hf_api_key: body.hf_api_key?.trim() || undefined,
+      groq_model: body.groq_model?.trim() || undefined,
     }),
   });
   if (!res.ok) throw new Error(await parseError(res));
@@ -302,7 +415,8 @@ export async function postTenses(
   provider: ProviderId,
   groqApiKey?: string,
   language: TenseLanguage = "English",
-  hfApiKey?: string
+  hfApiKey?: string,
+  groqModel?: string
 ): Promise<{
   items: TenseItem[];
   provider?: string;
@@ -317,6 +431,7 @@ export async function postTenses(
       provider,
       groq_api_key: groqApiKey?.trim() || undefined,
       hf_api_key: hfApiKey?.trim() || undefined,
+      groq_model: groqModel?.trim() || undefined,
     }),
   });
   if (!res.ok) throw new Error(await parseError(res));
@@ -337,7 +452,8 @@ export async function postTenseExplain(
   language: TenseLanguage = "English",
   hfApiKey?: string,
   text?: string,
-  example?: string
+  example?: string,
+  groqModel?: string
 ): Promise<{
   explanation?: string;
   examples?: TenseExample[];
@@ -354,6 +470,7 @@ export async function postTenseExplain(
       provider,
       groq_api_key: groqApiKey?.trim() || undefined,
       hf_api_key: hfApiKey?.trim() || undefined,
+      groq_model: groqModel?.trim() || undefined,
     }),
   });
   if (!res.ok) throw new Error(await parseError(res));

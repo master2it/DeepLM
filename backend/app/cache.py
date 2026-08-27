@@ -11,7 +11,7 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-CACHE_SCHEMA = 18
+CACHE_SCHEMA = 21
 _client = None
 _client_failed = False
 
@@ -38,9 +38,10 @@ def make_cache_key(kind: str, parts: dict[str, Any]) -> str:
         "tense": parts.get("tense") or "",
         "context": _normalize_text(str(parts.get("context") or "")),
         "provider": parts.get("provider") or "",
-        "ollama_model": settings.ollama_model,
+        "groq_model": parts.get("groq_model") or "",
         "hf_model": settings.hf_chat_model,
-        "groq_model": settings.groq_model,
+        "hf_deepseek_model": settings.hf_deepseek_model,
+        "groq_model_default": settings.groq_model,
     }
     raw = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
