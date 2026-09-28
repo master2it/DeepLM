@@ -1,270 +1,57 @@
 # DeepLM
 
-Grammar correction, translation styles, and tense practice in the browser — backed by **Hugging Face** or **Groq**.
-
-[![Live demo](https://img.shields.io/badge/demo-deep--lm.vercel.app-0ea5e9)](https://deep-lm.vercel.app)
-[![API health](https://img.shields.io/badge/API-Railway-111827)](https://deeplm.up.railway.app/health)
-[![Version](https://img.shields.io/badge/version-1.6.0-blue)](CHANGELOG.md)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://github.com/master2it/DeepLM)
-[![GitHub](https://img.shields.io/badge/github-master2it%2FDeepLM-181717)](https://github.com/master2it/DeepLM)
-
-**Demo:** [deep-lm.vercel.app](https://deep-lm.vercel.app) · **API:** [deeplm.up.railway.app](https://deeplm.up.railway.app/health)
-
-## Screenshots
-
-<p align="center">
-  <img src="frontend/public/image-1.jpg" alt="Grammar/Spell Fixer: English to German in three styles" width="100%" />
-</p>
-
-<p align="center"><em>Grammar / Spell Fixer — three style variants (via Groq)</em></p>
-
-<p align="center">
-  <img src="frontend/public/image-2.jpg" alt="Tenses tab: twelve English tenses with Persian glosses" width="100%" />
-</p>
-
-<p align="center"><em>Tenses — English 12-tense chart with Persian on every card</em></p>
-
-<p align="center">
-  <img src="frontend/public/image-3.jpg" alt="Settings: exclusive Hugging Face or Groq provider" width="100%" />
-</p>
-
-<p align="center"><em>Settings — exclusive provider (Hugging Face or Groq)</em></p>
-
----
-
-## Why DeepLM
-
-DeepLM is a small, self-hostable language-learning tool: fix a sentence in several styles, generate tense charts with Persian glosses, and explain a tense without sending your text to a closed proprietary UI. Call Hugging Face or Groq from Settings; visitors can paste their own API keys; shared server keys are rate-limited.
-
-## Features
-
-| Area | What you get |
-| --- | --- |
-| **Grammar / spell fixer** | Tab **Translate**. Infers meaning, then **Native**, **Friendly / Casual**, **Professional**, and **Grammar Notes**. Pick a **locale** (e.g. American vs British English). Default English → Persian. Max 1000 characters. |
-| **Tenses** | English: 12 tenses. German: 6 (Präsens, Präteritum, Perfekt, Plusquamperfekt, Futur I, Futur II). Persian gloss on every card. Recent searches stay in this browser. |
-| **Tense explanation** | Per-tense teaching notes and examples (cached in Redis like grammar/tenses). |
-| **Providers** | Default is **Hugging Face** (Qwen). Optional: **DeepSeek-V4-Flash** (same HF token) and **Groq**. A selected provider is exclusive (no silent vendor fallback). |
-| **Limits** | Groq Free: **RPM + RPD per selected model** ([docs](https://console.groq.com/docs/rate-limits)), with your key **or** the server key. Hugging Face: **50/day** on the shared server token only; your own HF key is uncapped. Counted by browser id **and** IP. Cache hits do not count. |
-| **PWA** | Installable on HTTPS (manifest, service worker, header Install button). |
-| **Changelog** | Versions tab is generated from [`CHANGELOG.md`](CHANGELOG.md). |
+DeepLM is a self-hosted Next.js language-learning app for grammar correction, translation styles, and English/German tense practice with Persian glosses. All generation is handled server-side through OpenAI.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  Browser["Next.js PWA<br/>Vercel"] -->|JSON + X-Client-Id| API["FastAPI<br/>Railway"]
-  API --> Redis[(Redis<br/>cache + quotas)]
-  API --> HF["Hugging Face"]
-  API --> Groq["Groq"]
+  browser[Next.js PWA] --> routes[Next.js API routes]
+  routes --> openai[OpenAI Chat API]
 ```
 
-| Layer | Stack |
-| --- | --- |
-| Frontend | Next.js (App Router), React, TypeScript, Tailwind, Serwist |
-| Backend | FastAPI, Pydantic Settings, httpx, Hugging Face Hub client |
-| Data | Redis (response cache, 12h TTL; daily quotas) |
-
-Monorepo layout:
-
-```text
-.
-├── backend/          FastAPI app (`app.main:app`)
-├── frontend/         Next.js UI
-├── docker-compose.yml
-├── railway.toml      API deploy (Railpack)
-└── VERSION           Semver source of truth
-```
+The repository is a single Next.js App Router application. The browser calls same-origin `/api/*` route handlers; `OPENAI_API_KEY` is never exposed to the client.
 
 ## Requirements
 
-- Python 3.12+ (backend)
-- Node.js 20+ (frontend)
-- [Redis](https://redis.io/) (cache and default-key quotas)
-- Docker Desktop optional (Redis + API)
+- Node.js 20+
+- An OpenAI API key
 
 ## Quick start
 
-### 1. Environment
-
 ```bash
-cp .env.example .env   # Windows: copy .env.example .env
-```
-
-Never commit `.env`. Hugging Face and Groq tokens are optional; they are only required when that provider is selected (or as a server default for visitors).
-
-### 2. Redis + API with Docker
-
-```bash
-docker compose up --build
-```
-
-| Service | URL |
-| --- | --- |
-| UI (run separately) | [http://localhost:3000](http://localhost:3000) |
-| API | [http://localhost:8000](http://localhost:8000) |
-| Health | [http://localhost:8000/health](http://localhost:8000/health) |
-
-Compose starts **Redis** and the **backend**.
-
-### 3. Frontend
-
-```bash
-cd frontend
-npm install          # or pnpm install
-# Unix
-export NEXT_PUBLIC_API_URL=http://localhost:8000
-npm run dev
-# Windows PowerShell
-$env:NEXT_PUBLIC_API_URL="http://localhost:8000"
+copy .env.example .env.local
+npm install
 npm run dev
 ```
 
-### Backend without Docker
-
-Start Redis first (`docker compose up redis` or a local Redis). Then:
-
-```bash
-cd backend
-python -m venv .venv
-# Unix: source .venv/bin/activate
-# Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-# Unix
-export REDIS_URL=redis://127.0.0.1:6379/0
-uvicorn app.main:app --reload --port 8000
-# Windows PowerShell
-$env:REDIS_URL="redis://127.0.0.1:6379/0"
-uvicorn app.main:app --reload --port 8000
-```
-
-`GET /health` should include `"redis": true` before you rely on cache or shared HF/Groq keys.
+Set `OPENAI_API_KEY` in `.env.local`, then visit [http://localhost:3000](http://localhost:3000).
 
 ## Configuration
 
-Copy [`.env.example`](.env.example). Important variables:
-
 | Variable | Purpose |
 | --- | --- |
-| `HF_TOKEN` / `GROQ_API_KEY` | Server default keys. Groq Free RPM/RPD apply (pasted or server). HF is 50/day only for the server token. |
-| `HF_DEFAULT_DAILY_LIMIT` / `GROQ_DEFAULT_DAILY_LIMIT` | Defaults `50` (HF server token) and `1000` (fallback Groq RPD). Live Groq caps come from the Free model catalog. |
-| `HF_CHAT_MODEL` / `HF_DEEPSEEK_MODEL` / `HF_PROVIDER` / `GROQ_MODEL` | HF default `Qwen/Qwen2.5-72B-Instruct`; DeepSeek `deepseek-ai/DeepSeek-V4-Flash`. Default Groq Free model `openai/gpt-oss-120b` (Settings can pick any Free chat model). |
-| `REQUEST_TIMEOUT_SECONDS` | HTTP timeout for provider calls (default `120`). |
-| `REDIS_URL` / `REDIS_PRIVATE_URL` | Cache + quotas. Private URL is preferred on Railway. |
-| `REDIS_TTL_SECONDS` | Cache TTL (default `43200` = 12 hours). |
-| `CORS_ORIGINS` | Comma-separated browser origins. |
-| `NEXT_PUBLIC_API_URL` | Frontend → API base URL (baked in at **build** time). |
+| `OPENAI_API_KEY` | Server-side OpenAI key, required for generation. |
+| `OPENAI_MODEL` | Chat model to use; defaults to `gpt-4o-mini`. |
 
-API keys and Groq/HF tokens are **never** written to Redis. Cache keys hash text, languages, tense, and provider only.
+## API
 
-## HTTP API
-
-Base URL in production: `https://deeplm.up.railway.app`.
-
-| Method | Path | Notes |
+| Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/health` | Version, provider status, Redis reachability. |
-| `GET` | `/api/providers` | Same payload as health. |
-| `GET` | `/api/languages` | Grammar languages, tense counts, German tense labels. |
-| `GET` | `/api/limits` | Daily usage. Send `X-Client-Id`. `Cache-Control: no-store`. |
-| `GET` | `/api/changelog` | Parsed changelog for the Versions tab. |
-| `POST` | `/api/grammar` | Styled grammar / translation. |
-| `POST` | `/api/tenses` | Tense chart. |
-| `POST` | `/api/tenses/explain` | Tense explanation. |
-
-Generation endpoints accept `provider`, optional `hf_api_key` / `groq_api_key`, and use Redis cache when Redis is up. Repeat requests with the same inputs return `"cached": true` and do not increment quotas.
-
-### LLM routing
-
-1. If Settings (or the request) names a provider, **only that provider** runs.
-2. If no provider is sent, try Hugging Face (Qwen), then DeepSeek, then Groq.
-3. Leftover `<think>` blocks are stripped from replies.
-4. An explicit Groq / HF choice fails closed if that provider is missing or errors.
-5. Groq generations (your key or the server key) and default-key Hugging Face generations require Redis (503 if Redis is down) so Groq Free RPM/RPD and HF 50/day caps can be enforced.
+| `GET` | `/api/health` | Application and OpenAI configuration status. |
+| `GET` | `/api/languages` | Language, locale, and tense metadata. |
+| `GET` | `/api/changelog` | Release list for the Versions tab. |
+| `POST` | `/api/grammar` | Grammar correction and styled translation. |
+| `POST` | `/api/tenses` | English or German tense chart. |
+| `POST` | `/api/tenses/explain` | Tense explanation and examples. |
 
 ## Deployment
 
-The repo root is a **monorepo**. Railpack builds the **FastAPI** service. Deploy the Next.js app separately (for example Vercel) with `NEXT_PUBLIC_API_URL` pointing at the API.
-
-Do not set the Railway service root to `frontend/`. `railpack.json` starts Uvicorn from `backend/`.
-
-### API (Railway)
-
-Set at least:
-
-```env
-CORS_ORIGINS=https://deep-lm.vercel.app,http://localhost:3000
-HF_TOKEN=
-GROQ_API_KEY=
-REDIS_TTL_SECONDS=43200
-```
-
-Add a **Redis** plugin on the same project and environment. On the **API service** (not the Redis plugin), set:
-
-```text
-REDIS_PRIVATE_URL=${{ Redis.REDIS_PRIVATE_URL }}
-```
-
-If the canvas service is not named `Redis`, use that name instead. Redeploy. Confirm `GET /health` → `"redis": true`.
-
-`REDIS_PRIVATE_URL` is for Railway’s private network. It will not work from your laptop; local runs use `REDIS_URL=redis://127.0.0.1:6379/0` (see `railway.toml` `[environments.local.variables]`).
-
-### Frontend (Vercel)
-
-- Root directory: `frontend`
-- Install: pnpm or npm
-- Env: `NEXT_PUBLIC_API_URL=https://deeplm.up.railway.app`
-- Rebuild after changing `NEXT_PUBLIC_API_URL`
-
-Production PWA build uses webpack so Serwist can inject the worker: `npm run build` then `npm run start`.
-
-## Progressive Web App
-
-| Piece | Location |
-| --- | --- |
-| Manifest | `/manifest.webmanifest` |
-| Icons | `frontend/public/icons/icon-192.png`, `icon-512.png` |
-| Service worker | `/sw.js` (build output; **disabled** in `next dev`) |
-| Offline | `/offline` (shell only; API stays network-only) |
-
-Chromium: header **Install app**. iOS: Share → Add to Home Screen.
-
-## Tests
-
-```bash
-cd backend
-python -m unittest discover -s tests -v
-```
-
-Targeted:
-
-```bash
-python -m unittest tests.test_config tests.test_quota tests.test_cache tests.test_translation_quality tests.test_tenses -v
-```
+Deploy the repository root to Vercel or any Node-compatible host. Configure `OPENAI_API_KEY` and optionally `OPENAI_MODEL` as server environment variables. Do not prefix either variable with `NEXT_PUBLIC_`.
 
 ## Versioning
 
-Canonical semver is [`VERSION`](VERSION). It is shown in the UI and on `GET /health`.
-
-Each push to `main` runs [`.github/workflows/bump-version.yml`](.github/workflows/bump-version.yml), which increments the **patch** and tags `vX.Y.Z`. Commits whose message contains `chore: bump version` are skipped so the bot does not loop. For a **minor** or **major** release, bump `VERSION` (and the mirrored files) in the same PR before merge.
-
-Log every change in [`CHANGELOG.md`](CHANGELOG.md) as **major**, **minor**, **patch**, or **release**.
-
-## Contributing
-
-Issues and pull requests are welcome at [github.com/master2it/DeepLM](https://github.com/master2it/DeepLM).
-
-1. Fork and branch from `main`.
-2. Keep secrets out of git (`.env`, tokens, Redis passwords).
-3. Add or update a `CHANGELOG.md` entry in the same PR.
-4. Prefer small, reviewable diffs. Match existing code style.
-5. If you change public API or provider behavior, update this README.
-
-## Security
-
-- Do not commit API keys, Redis URLs with passwords, or `.env`.
-- Browser-pasted Groq/HF keys stay in `localStorage` and are sent only to your configured API.
-- Default-key daily limits exist to protect shared tokens, not as a security boundary.
-- Report vulnerabilities privately via GitHub [Security advisories](https://github.com/master2it/DeepLM/security/advisories/new) if available, otherwise open a private contact with the maintainer.
+Canonical semver is [`VERSION`](VERSION). Log changes in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## License
 

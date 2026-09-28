@@ -18,7 +18,6 @@ import {
   postGrammar,
   type GrammarResult,
   type LanguagesPayload,
-  type ProviderId,
   type StylePair,
   MAX_INPUT_CHARS,
   providerModelLabel,
@@ -75,20 +74,8 @@ function stylePair(
 }
 
 export function GrammarFixer({
-  provider,
-  groqApiKey,
-  hfApiKey,
-  hfModel,
-  deepseekModel,
-  groqModel,
   languages,
 }: {
-  provider: ProviderId;
-  groqApiKey: string;
-  hfApiKey: string;
-  hfModel?: string;
-  deepseekModel?: string;
-  groqModel?: string;
   languages: LanguagesPayload | null;
 }) {
   const meta = languages;
@@ -150,10 +137,6 @@ export function GrammarFixer({
         from_lang: fromLang,
         to_lang: toLang,
         to_locale: resolvedToLocale,
-        provider,
-        groq_api_key: groqApiKey,
-        hf_api_key: hfApiKey,
-        groq_model: provider === "groq" ? groqModel : undefined,
       });
       setResult(data);
       setHistory(
@@ -162,7 +145,7 @@ export function GrammarFixer({
           from_lang: fromLang,
           to_lang: toLang,
           to_locale: resolvedToLocale,
-          provider: data.provider,
+          provider: "openai",
           result: data,
         })
       );
@@ -173,8 +156,6 @@ export function GrammarFixer({
       setLoading(false);
     }
   }
-
-  const modelNames = { hf: hfModel, deepseek: deepseekModel, groq: groqModel };
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -271,7 +252,7 @@ export function GrammarFixer({
             item.to_locale ? ` (${item.to_locale})` : ""
           }${
             item.provider
-              ? ` · ${providerModelLabel(item.provider, modelNames)}`
+              ? ` · ${providerModelLabel(item.provider)}`
               : ""
           } · ${formatHistoryTime(item.at)}`,
         }))}
@@ -296,7 +277,7 @@ export function GrammarFixer({
         <div className="space-y-4">
           {result.provider && (
             <Badge>
-              via {providerModelLabel(result.provider, modelNames)}
+              via {providerModelLabel(result.provider)}
             </Badge>
           )}
           {STYLE_KEYS.map(({ key, label }) => {

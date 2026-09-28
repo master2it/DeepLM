@@ -29,7 +29,6 @@ import {
   MAX_INPUT_CHARS,
   providerModelLabel,
   type LanguagesPayload,
-  type ProviderId,
   type TenseItem,
   type TenseLanguage,
   type TenseExample,
@@ -47,20 +46,8 @@ import {
 } from "@/lib/search-history";
 
 export function TensesGenerator({
-  provider,
-  groqApiKey,
-  hfApiKey,
-  hfModel,
-  deepseekModel,
-  groqModel,
   languages: languagesMeta,
 }: {
-  provider: ProviderId;
-  groqApiKey: string;
-  hfApiKey: string;
-  hfModel?: string;
-  deepseekModel?: string;
-  groqModel?: string;
   languages: LanguagesPayload | null;
 }) {
   const [languages, setLanguages] = useState<string[]>(["English", "German"]);
@@ -116,14 +103,7 @@ export function TensesGenerator({
     setLoading(true);
     setError(null);
     try {
-      const data = await postTenses(
-        text.trim(),
-        provider,
-        groqApiKey,
-        language,
-        hfApiKey,
-        provider === "groq" ? groqModel : undefined
-      );
+      const data = await postTenses(text.trim(), language);
       const itemsOut = data.items || [];
       setItems(itemsOut);
       setUsedProvider(data.provider || null);
@@ -152,13 +132,9 @@ export function TensesGenerator({
     try {
       const data = await postTenseExplain(
         item.tense,
-        provider,
-        groqApiKey,
         language,
-        hfApiKey,
         text.trim(),
-        item.text,
-        provider === "groq" ? groqModel : undefined
+        item.text
       );
       setInfoBody((data.explanation || "").trim());
       setInfoExamples(data.examples || []);
@@ -172,7 +148,6 @@ export function TensesGenerator({
 
   const placeholder = language === "German" ? "Ich arbeite" : "I did";
   const tenseCount = tenseCounts[language] ?? DEFAULT_TENSE_COUNTS[language];
-  const modelNames = { hf: hfModel, deepseek: deepseekModel, groq: groqModel };
   function labelFor(lang: string) {
     const n = tenseCounts[lang] ?? (lang === "German" ? 6 : 12);
     return `${lang} (${n} ${n === 1 ? "tense" : "tenses"})`;
@@ -224,7 +199,7 @@ export function TensesGenerator({
           title: item.text,
           subtitle: `${item.language}${
             item.provider
-              ? ` · ${providerModelLabel(item.provider, modelNames)}`
+              ? ` · ${providerModelLabel(item.provider)}`
               : ""
           } · ${formatHistoryTime(item.at)}`,
         }))}
@@ -246,7 +221,7 @@ export function TensesGenerator({
       />
       {usedProvider && (
         <Badge>
-          via {providerModelLabel(usedProvider, modelNames)} · {language} ·{" "}
+          via {providerModelLabel(usedProvider)} · {language} ·{" "}
           {tenseCount} tenses
         </Badge>
       )}

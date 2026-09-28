@@ -11,10 +11,6 @@ declare global {
 
 declare const self: ServiceWorkerGlobalScope & typeof globalThis;
 
-const apiHost = (process.env.NEXT_PUBLIC_API_URL || "")
-  .replace(/^https?:\/\//, "")
-  .replace(/\/.*$/, "");
-
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
@@ -22,9 +18,7 @@ const serwist = new Serwist({
   navigationPreload: true,
   runtimeCaching: [
     {
-      matcher: ({ url }) =>
-        Boolean(apiHost) &&
-        (url.hostname === apiHost || url.hostname.endsWith(".up.railway.app")),
+      matcher: ({ url }) => url.origin === self.location.origin && url.pathname.startsWith("/api/"),
       handler: new NetworkOnly(),
     },
     ...defaultCache,

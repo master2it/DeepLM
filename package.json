@@ -1,6 +1,6 @@
 {
   "name": "deeplm-web",
-  "description": "DeepLM web UI: grammar fixer, tenses, and PWA. Next.js App Router.",
+  "description": "DeepLM: OpenAI-powered grammar correction, translation, and tense practice.",
   "homepage": "https://deep-lm.vercel.app",
   "repository": {
     "type": "git",
@@ -19,8 +19,7 @@
     "tenses",
     "persian",
     "german",
-    "huggingface",
-    "groq",
+    "openai",
     "nextjs",
     "pwa",
     "language-learning"
@@ -31,7 +30,7 @@
       "url": "https://github.com/master2it"
     }
   ],
-  "version": "1.6.0",
+  "version": "1.7.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",

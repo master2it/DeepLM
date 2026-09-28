@@ -30,6 +30,17 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ---
 
+## [1.7.0] — 2026-09-28 — major
+
+### 2026-09-28 — Migrate to a single Next.js OpenAI application
+- **Type:** major
+- **Version:** 1.7.0
+- **Summary:** Replace the FastAPI, Redis, Hugging Face, and Groq stack with same-origin Next.js API routes backed by server-side OpenAI Chat.
+- **Why:** feature
+- **Files:** `src/app/api/**`, `src/lib/server/**`, `src/lib/api.ts`, `src/app/page.tsx`, `package.json`, `README.md`
+
+---
+
 ## [1.6.0] — 2026-08-27 — minor
 
 ### 2026-08-27 — Default grammar to_locale to first list option

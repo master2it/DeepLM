@@ -1,4 +1,4 @@
-"""Bump patch version in VERSION, backend, and frontend."""
+"""Bump patch version in VERSION and the Next.js app."""
 
 from __future__ import annotations
 
@@ -7,10 +7,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION_FILE = ROOT / "VERSION"
-BACKEND_FILE = ROOT / "backend" / "app" / "version.py"
-FRONTEND_TS = ROOT / "frontend" / "src" / "lib" / "version.ts"
-PACKAGE_JSON = ROOT / "frontend" / "package.json"
-ROOT_PACKAGE_JSON = ROOT / "package.json"
+FRONTEND_TS = ROOT / "src" / "lib" / "version.ts"
+PACKAGE_JSON = ROOT / "package.json"
 
 
 def bump_patch(version: str) -> str:
@@ -22,11 +20,6 @@ def main() -> None:
     current = VERSION_FILE.read_text(encoding="utf-8").strip()
     nxt = bump_patch(current)
     VERSION_FILE.write_text(nxt + "\n", encoding="utf-8")
-    BACKEND_FILE.write_text(
-        '"""App semver. Updated by scripts/bump_version.py on each push to main."""\n\n'
-        f'APP_VERSION = "{nxt}"\n',
-        encoding="utf-8",
-    )
     FRONTEND_TS.write_text(
         "/** App semver. Updated by scripts/bump_version.py on each push to main. */\n"
         f'export const APP_VERSION = "{nxt}";\n',
@@ -36,11 +29,6 @@ def main() -> None:
     pkg["version"] = nxt
     PACKAGE_JSON.write_text(
         json.dumps(pkg, indent=2) + "\n", encoding="utf-8"
-    )
-    root_pkg = json.loads(ROOT_PACKAGE_JSON.read_text(encoding="utf-8"))
-    root_pkg["version"] = nxt
-    ROOT_PACKAGE_JSON.write_text(
-        json.dumps(root_pkg, indent=2) + "\n", encoding="utf-8"
     )
     print(nxt)
 
