@@ -15,7 +15,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex min-h-11 w-full items-center justify-between rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:h-10 sm:min-h-10",
+      "flex min-h-11 w-full items-center justify-between rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:h-10 sm:min-h-10 mb-0",
       className
     )}
     {...props}
@@ -31,17 +31,33 @@ SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
 const SelectContent = React.forwardRef<
   React.ComponentRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+>(({ className, children, position = "popper", sideOffset = 4, ...props }, ref) => (
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       ref={ref}
+      position={position}
+      sideOffset={sideOffset}
       className={cn(
-        "relative z-50 max-h-[min(24rem,70dvh)] min-w-[8rem] overflow-hidden rounded-md border border-zinc-700 bg-zinc-900 text-zinc-100 shadow-md",
+        "relative z-50 max-h-[min(24rem,var(--radix-select-content-available-height))] min-w-[8rem] overflow-hidden rounded-md border border-zinc-700 bg-zinc-900 text-zinc-100 shadow-md",
+        position === "popper" && "w-[var(--radix-select-trigger-width)]",
         className
       )}
       {...props}
     >
-      <SelectPrimitive.Viewport className="max-h-[min(24rem,70dvh)] overflow-y-auto p-1">{children}</SelectPrimitive.Viewport>
+      <SelectPrimitive.Viewport
+        className="max-h-[min(24rem,var(--radix-select-content-available-height))] w-full min-w-[var(--radix-select-trigger-width)] overflow-y-auto overscroll-contain p-1"
+        style={{ scrollbarWidth: "thin" }}
+        onWheel={(event) => {
+          const list = event.currentTarget;
+          const maxScroll = list.scrollHeight - list.clientHeight;
+          if (maxScroll <= 0) return;
+          event.preventDefault();
+          event.stopPropagation();
+          list.scrollTop = Math.min(maxScroll, Math.max(0, list.scrollTop + event.deltaY));
+        }}
+      >
+        {children}
+      </SelectPrimitive.Viewport>
     </SelectPrimitive.Content>
   </SelectPrimitive.Portal>
 ));

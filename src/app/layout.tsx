@@ -5,7 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "DeepLM",
   applicationName: "DeepLM",
-  description: "Grammar fixer, translation, and tense practice powered by OpenAI",
+  description: "Grammar fixer and translator powered by OpenAI",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [

@@ -21,7 +21,6 @@ export function SearchHistory({
   onRemove: (id: string) => void;
   onClear: () => void;
 }) {
-  if (items.length === 0) return null;
   return (
     <section className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
       <div className="flex items-center justify-between gap-2">
@@ -33,7 +32,10 @@ export function SearchHistory({
           Clear
         </Button>
       </div>
-      <ul className="max-h-56 space-y-1 overflow-y-auto">
+      {items.length === 0 ? (
+        <p className="px-2 py-3 text-sm text-zinc-500">No recent searches.</p>
+      ) : (
+      <ul className="max-h-[40vh] space-y-1 overflow-y-auto">
         {items.map((item) => (
           <li key={item.id} className="flex items-stretch gap-1">
             <button
@@ -61,6 +63,7 @@ export function SearchHistory({
           </li>
         ))}
       </ul>
+      )}
     </section>
   );
 }

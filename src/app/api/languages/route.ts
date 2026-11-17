@@ -2,14 +2,10 @@ import { NextResponse } from "next/server";
 import {
   DEFAULT_GRAMMAR_FROM,
   DEFAULT_GRAMMAR_TO,
-  DEFAULT_TENSE_LANGUAGE,
-  GERMAN_TENSES,
   GRAMMAR_LANGUAGES,
   LANGUAGE_LOCALES,
   MAX_INPUT_CHARS,
   RTL_TARGETS,
-  TENSE_COUNTS,
-  TENSE_LANGUAGES,
 } from "@/lib/server/constants";
 
 export function GET() {
@@ -26,10 +22,7 @@ export function GET() {
       { label: "Native", key: "native" },
       { label: "Friendly / Casual", key: "friendly" },
       { label: "Professional", key: "professional" },
+      { label: "Programmer", key: "programmer" },
     ],
-    tense_languages: TENSE_LANGUAGES,
-    default_tense_language: DEFAULT_TENSE_LANGUAGE,
-    tense_counts: TENSE_COUNTS,
-    german_tenses: GERMAN_TENSES,
   });
 }

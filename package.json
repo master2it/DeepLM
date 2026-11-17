@@ -1,6 +1,6 @@
 {
-  "name": "deeplm-web",
-  "description": "DeepLM: OpenAI-powered grammar correction, translation, and tense practice.",
+  "name": "deeplm",
+  "description": "DeepLM: OpenAI-powered grammar correction and translation.",
   "homepage": "https://deep-lm.vercel.app",
   "repository": {
     "type": "git",
@@ -16,7 +16,6 @@
     "grammar",
     "spell-checker",
     "translation",
-    "tenses",
     "persian",
     "german",
     "openai",
@@ -30,7 +29,7 @@
       "url": "https://github.com/master2it"
     }
   ],
-  "version": "1.7.0",
+  "version": "1.8.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -38,14 +37,13 @@
     "start": "next start"
   },
   "dependencies": {
-    "@radix-ui/react-dialog": "^1.1.6",
     "@radix-ui/react-label": "^2.1.2",
     "@radix-ui/react-select": "^2.1.6",
     "@radix-ui/react-slot": "^1.1.2",
-    "@radix-ui/react-tabs": "^1.1.3",
     "@serwist/next": "^9.5.12",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "flag-icons": "^7.6.0",
     "lucide-react": "^0.487.0",
     "next": "^16.3.1",
     "react": "^19.2.8",

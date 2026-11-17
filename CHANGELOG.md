@@ -28,6 +28,115 @@ Log every AI-assisted change here **in the same PR/commit** as the fix. Newest e
 
 ## [Unreleased]
 
+### 2026-11-17 — Responsive language form
+- **Type:** patch
+- **Version:** Unreleased
+- **Summary:** On a narrow form, From, swap, and To stay on one row, and Locale and Translate move to full-width rows. A wide form keeps all five controls in one row.
+- **Why:** bug
+- **Files:** `src/components/grammar-fixer.tsx`
+
+---
+
+## [1.8.0] — 2026-11-17 — major
+
+### 2026-11-17 — Roman Writing on each style
+- **Type:** minor
+- **Version:** 1.8.0
+- **Summary:** Each style shows Roman Writing: the To-language sentence in English letters. When To is English, Roman Writing is that English sentence.
+- **Why:** feature
+- **Files:** `src/lib/server/grammar.ts`, `src/lib/api.ts`, `src/components/grammar-fixer.tsx`
+
+### 2026-11-17 — Split the page into form and side column
+- **Type:** patch
+- **Version:** 1.8.0
+- **Summary:** The form fills the left two thirds. Recent searches and Grammar Notes sit in separate boxes on the right third.
+- **Why:** feature
+- **Files:** `src/components/grammar-fixer.tsx`, `src/components/search-history.tsx`, `src/app/page.tsx`
+
+### 2026-11-17 — Fix language swap
+- **Type:** patch
+- **Version:** 1.8.0
+- **Summary:** Swapping From and To exchanges the two languages and updates Locale. The fields no longer go blank.
+- **Why:** bug
+- **Files:** `src/components/grammar-fixer.tsx`
+
+### 2026-11-17 — Abbreviations in Programmer style
+- **Type:** patch
+- **Version:** 1.8.0
+- **Summary:** The Programmer version uses the short forms engineers type in Slack, such as PR, API, DB, config, and ASAP, and keeps them in the translation.
+- **Why:** feature
+- **Files:** `src/lib/server/grammar.ts`
+
+### 2026-11-17 — Keep From and To languages different
+- **Type:** patch
+- **Version:** 1.8.0
+- **Summary:** A language chosen in From disappears from To, and a language chosen in To disappears from From.
+- **Why:** bug
+- **Files:** `src/components/grammar-fixer.tsx`
+
+### 2026-11-17 — Keep language menu in place while scrolling
+- **Type:** patch
+- **Version:** 1.8.0
+- **Summary:** Scrolling a From, To, or Locale list moves the items only. The menu stays anchored to its field.
+- **Why:** bug
+- **Files:** `src/components/ui/select.tsx`
+
+### 2026-11-17 — Language flags
+- **Type:** patch
+- **Version:** 1.8.0
+- **Summary:** From and To show a flag beside each language, including the selected value.
+- **Why:** feature
+- **Files:** `src/components/language-flag.tsx`, `src/components/grammar-fixer.tsx`
+
+### 2026-11-17 — Pin language controls to the bottom
+- **Type:** patch
+- **Version:** 1.8.0
+- **Summary:** From, swap, To, Locale, and Translate stay in one row, aligned to the bottom of that row.
+- **Why:** feature
+- **Files:** `src/components/grammar-fixer.tsx`
+
+### 2026-11-17 — Fix language list scrolling
+- **Type:** patch
+- **Version:** 1.8.0
+- **Summary:** From and To menus show a scrollbar and scroll with the mouse wheel, so languages below the fold can be reached.
+- **Why:** bug
+- **Files:** `src/components/ui/select.tsx`, `src/app/globals.css`
+
+### 2026-11-17 — Add Armenian
+- **Type:** patch
+- **Version:** 1.8.0
+- **Summary:** Armenian is available in From and To, with Eastern Armenian (Armenia) as the default locale.
+- **Why:** feature
+- **Files:** `src/lib/server/constants.ts`
+
+### 2026-11-17 — Copy Grammar enhanced text
+- **Type:** patch
+- **Version:** 1.8.0
+- **Summary:** Clicking a Grammar enhanced sentence copies it and shows a Copied notice.
+- **Why:** feature
+- **Files:** `src/components/grammar-fixer.tsx`
+
+### 2026-11-17 — Programmer Slack style
+- **Type:** minor
+- **Version:** 1.8.0
+- **Summary:** Add a Programmer version written the way an engineer would say the same thing in Slack.
+- **Why:** feature
+- **Files:** `src/lib/server/grammar.ts`, `src/lib/api.ts`, `src/components/grammar-fixer.tsx`, `src/app/api/languages/route.ts`
+
+### 2026-11-17 — Fill Grammar Fix translation
+- **Type:** patch
+- **Version:** 1.8.0
+- **Summary:** Grammar Fix "Translated" uses the target-language translation of the corrected sentence, including when the model puts it in `translated` instead of an empty `to`.
+- **Why:** bug
+- **Files:** `src/lib/server/grammar.ts`
+
+### 2026-11-17 — Single translation page
+- **Type:** major
+- **Version:** 1.8.0
+- **Summary:** Remove Tenses and Changelog. The app is one translation page with no tabs.
+- **Why:** feature
+- **Files:** `src/app/page.tsx`, `src/lib/api.ts`, `src/lib/search-history.ts`, `src/app/api/tenses`, `src/app/api/changelog`, `src/components/tenses-generator.tsx`, `src/components/changelog-panel.tsx`
+
 ---
 
 ## [1.7.0] — 2026-09-28 — major

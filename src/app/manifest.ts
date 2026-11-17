@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "DeepLM",
     short_name: "DeepLM",
-    description: "Grammar fixer and 12 tenses",
+    description: "Grammar fixer and translator",
     start_url: "/",
     scope: "/",
     display: "standalone",

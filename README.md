@@ -1,6 +1,6 @@
 # DeepLM
 
-DeepLM is a self-hosted Next.js language-learning app for grammar correction, translation styles, and English/German tense practice with Persian glosses. All generation is handled server-side through OpenAI.
+DeepLM is a self-hosted Next.js app for grammar correction and styled translation. All generation is handled server-side through OpenAI.
 
 ## Architecture
 
@@ -39,11 +39,8 @@ Set `OPENAI_API_KEY` in `.env.local`, then visit [http://localhost:3000](http://
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/health` | Application and OpenAI configuration status. |
-| `GET` | `/api/languages` | Language, locale, and tense metadata. |
-| `GET` | `/api/changelog` | Release list for the Versions tab. |
+| `GET` | `/api/languages` | Language and locale metadata. |
 | `POST` | `/api/grammar` | Grammar correction and styled translation. |
-| `POST` | `/api/tenses` | English or German tense chart. |
-| `POST` | `/api/tenses/explain` | Tense explanation and examples. |
 
 ## Deployment
 
